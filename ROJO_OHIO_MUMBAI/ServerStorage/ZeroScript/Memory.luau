@@ -42,6 +42,6 @@ Slop Game (placeId 139066482915692). Procedural animation framework for R15 avat
 - GitHub is the source of truth for code; Memory.md documents Studio-side observations only
 
 ## Phase status
-- Phases 0-8 COMPLETE: discovery, math repair, critical defects, typing/checker, lifecycle, bootstrap extraction, --!strict migration, performance (StatePool early-out ~15x, root-write fast path, allocation removal), feature completion (velocity filter, arc length, springs, squash & stretch, look-at, joint amplitude).
-- Remaining: Phase 9 (regression audit), Phase 10 (maintenance docs). R6 deferred (no R6 clip data). No *.project.json yet (ROJO mapping is harness-enforced convention).
+- Phases 0-10 COMPLETE: discovery, math repair, critical defects, typing/checker, lifecycle, bootstrap extraction, --!strict migration, performance (StatePool early-out ~15x, root-write fast path, allocation removal), feature completion (velocity filter, arc length, springs, squash & stretch, look-at, joint amplitude), regression audit (Audit.md), maintenance docs (Maintenance.md, API.md).
+- Remaining: nothing in-scope. R6 deferred (no R6 clip data). No *.project.json yet (ROJO mapping is harness-enforced convention). AnimationConstraint rig blocker and Studio parity require explicit authorization / Studio access.
 ]==]
