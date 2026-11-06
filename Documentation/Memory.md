@@ -113,7 +113,8 @@ All files declare `--!strict` and are analysed clean (0 errors / 0 warnings; 40 
 `Memory.md` (this file), `API.md` (public API reference), `Maintenance.md` (Phase 10 maintenance),
 `Audit.md` (Phase 9 regression audit), `SyntaxReference.md`, `GoodPractices.md`, `BadPractices.md`,
 `Changelog.md` (mirror of `Shared/Changelog.luau`). The harness does not install these; they are
-for humans.
+for humans. `Tools/verify/README.md` orients contributors to the harness; CI lives in
+`.github/workflows/verify.yml`.
 
 ---
 
@@ -375,6 +376,8 @@ checklist, forbidden shortcuts, and GitHub-vs-Studio reality checks.
 - **Studio MCP is BLOCKED** in this environment; GitHub-vs-Studio parity is **BLOCKED**, not
   verified. All work is on the local clone. The AnimationConstraint blocker requires a playtest,
   which is prohibited without explicit authorization.
+- **CI**: `.github/workflows/verify.yml` runs `verify.mjs` + `rojo-check.mjs` on push/PR to
+  `main` and `arena/**` (node 22, `npm ci`). No secrets. The harness is the test signal.
 - **`ProceduralAnimation.project.json` exists** (repo root, Rojo 7 format). It maps
   `ROJO_OHIO_MUMBAI/` onto the DataModel for placeId 139066482915692 via explicit tree keys;
   the two starter entries force `$className LocalScript` / `Script` (the `.local`/`.legacy`

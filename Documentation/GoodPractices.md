@@ -53,8 +53,8 @@ depends on nothing. `PoseBuffer` exists for exactly this reason: both `ClientPos
 `ClientRigKinematics` write the pose buffer. Without the leaf they would require each other.
 
 ```lua
--- ProceduralAnimation/Client/PoseBuffer  (a leaf: depends only on AnimationConfig)
-local Config = require(script.Parent.Parent.Shared.AnimationConfig)
+-- ProceduralAnimation/Client/Runtime/PoseBuffer  (a leaf: depends only on AnimationConfig)
+local Config = require(script.Parent.Parent.Parent.Shared.AnimationConfig)
 local MaxJoints = Config.MaxJoints
 local PoseBytesPerJoint = 12
 local PoseBufferLength = MaxJoints * PoseBytesPerJoint
@@ -176,6 +176,10 @@ mid-iteration. Swap-removal is O(1):
 
 ```lua
 function StatePool.Compact()
+    if StatePool.PendingRemovals == 0 then
+        return                     -- steady-state frame: nothing to do (measured ~15x cheaper)
+    end
+    StatePool.PendingRemovals = 0
     local Active = StatePool.Active
     local Index = 1
     local Count = StatePool.Count
@@ -191,6 +195,9 @@ function StatePool.Compact()
     StatePool.Count = Count
 end
 ```
+
+`PendingRemovals` is incremented by `Remove` and reset here (and by `Clear`), so the O(n)
+scan only runs on frames that actually had a removal.
 
 Trade-off, accepted and documented in the module: **iteration order is not stable** across
 removals. Nothing in this framework depends on order.

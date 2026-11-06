@@ -314,6 +314,12 @@ Changelog.Entries = {
         File = "ProceduralAnimation.project.json (root, new), Tools/verify/rojo-check.mjs (new), .gitignore, Documentation/Memory.md, Maintenance.md, Audit.md",
         Reason = "Close the long-open audit item O3. The project file maps ROJO_OHIO_MUMBAI/ onto the DataModel for placeId 139066482915692; the two harness-suffixed starter entries force $className LocalScript/Script via tree keys, so the .local/.legacy harness conventions stay untouched. rojo-check.mjs statically enforces path existence, full coverage of the source tree, repository containment and the harness conventions (28/28 files mapped; negative cases verified). 'rojo build' itself was not executed in this sandbox (Rojo release assets redirect to object storage the sandbox cannot reach); the build must be validated on a network that can reach GitHub releases before publishing the place. No framework code changed; Config.Version stays 1.1.0.",
     },
+    {
+        Version = "1.1.2",
+        Description = "Docs accuracy pass and CI: GoodPractices/BadPractices corrected, Tools/verify/README.md added, GitHub Actions Verify workflow, Maintenance/Memory docs synced.",
+        File = "Documentation/GoodPractices.md, Documentation/BadPractices.md, Tools/verify/README.md (new), .github/workflows/verify.yml (new), Documentation/Maintenance.md, Documentation/Memory.md",
+        Reason = "Keep the documentation as rigorous as the code after Phases 6-10 and the project-file work. GoodPractices: the Compact example now shows the Phase 7 PendingRemovals early-out and the PoseBuffer require path resolves correctly; BadPractices: the config example cites keys that exist (Locomotion.BlendRate, IkBlendRate) and the 'exports preserved' claim no longer cites a stale count; CI runs the same gate we run locally (npm ci + verify.mjs + rojo-check.mjs) so a regression cannot merge quietly. No framework code changed; Config.Version stays 1.1.0.",
+    },
 }
 
 --=========================================================

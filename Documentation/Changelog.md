@@ -291,6 +291,15 @@ an entry, add it in **both** places.
 
 ---
 
+## 1.1.2
+
+### Docs accuracy pass and CI: corrected examples, harness README, GitHub Actions gate.
+
+- **Affected:** `Documentation/GoodPractices.md, Documentation/BadPractices.md, Tools/verify/README.md (new), .github/workflows/verify.yml (new), Documentation/Maintenance.md, Documentation/Memory.md`
+- **Reason:** Keep the documentation as rigorous as the code after Phases 6–10 and the project-file work. GoodPractices: the `Compact` example now shows the Phase 7 `PendingRemovals` early-out and the PoseBuffer require path is correct; BadPractices: the config example cites keys that exist (`Locomotion.BlendRate`, `IkBlendRate`) and the "exports preserved" claim no longer cites a stale count. CI runs the same gate we run locally (`npm ci` + `verify.mjs` + `rojo-check.mjs`) on push/PR to `main` and `arena/**` so a regression cannot merge quietly. No framework code changed; `Config.Version` stays `1.1.0`.
+
+---
+
 ## Entry format
 
 ```
