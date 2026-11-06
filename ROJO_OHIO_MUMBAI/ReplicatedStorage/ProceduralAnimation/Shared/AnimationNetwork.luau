@@ -14,7 +14,6 @@
 -- and the packet layout are exactly what they were.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
 -- Required by ConnectServer: Constants caches the unbound GetPlayers method, so the
 -- service instance has to be passed as its first argument (PlayersGetPlayers(Players)).
 local Players = game:GetService("Players")
@@ -68,10 +67,6 @@ local VelocityScale = Constants.VelocityScale
 local MaxAngleRadians = Constants.MaxAngleRadians
 local WriteClampedI16 = Constants.WriteClampedI16
 local ReadClampedI16 = Constants.ReadClampedI16
-
--- Enough for one decoded pose pair per player plus animation state.
-local ReceiveStatePool = {}
-local ReceiveStatePoolCount = 0
 
 --=========================================================
 -- [2] BUFFERS
@@ -464,7 +459,7 @@ function Network.Shutdown()
     for Index = ServerPlayerCount, 1, -1 do
         local Player = ServerPlayerList[Index]
         if Player then
-            ReleaseRemotePose(Player)
+            Network.ReleaseRemotePose(Player)
         end
         ServerPlayerList[Index] = nil
     end

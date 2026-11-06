@@ -158,12 +158,22 @@ async function CheckAnalysis(Files) {
     const AnalysisInstance = await Analysis.create({ mode: "nonstrict", lint: true });
     let DefinitionLoaded = false;
     const DefinitionPath = join(Here, "roblox-definitions.luau");
-    if (existsSync(DefinitionPath)) {
+
+    // The Roblox surface is hand-declared here. Without it every Roblox global reports as an
+    // unknown global, those become "definition gaps", and the gaps are filtered out of the
+    // failures -- so analysis would appear to pass while checking almost nothing. That is the
+    // vacuous-green trap this check exists to prevent, so a missing or rejected definition file
+    // is a hard FAIL, not a warning.
+    if (!existsSync(DefinitionPath)) {
+        Record("Static analysis", "roblox-definitions.luau", "FAIL", "definition file missing");
+        console.log(`${Paint.FAIL}  DEFINITIONS${Paint.OFF} ${DefinitionPath} is missing: every Roblox global would be filtered out as a "gap".${Paint.OFF}`);
+    } else {
         try {
             AnalysisInstance.addDefinition("roblox", readFileSync(DefinitionPath, "utf8"));
             DefinitionLoaded = true;
         } catch (Error) {
-            console.log(`${Paint.WARN}  definition file rejected: ${String(Error.message || Error).slice(0, 240)}${Paint.OFF}`);
+            Record("Static analysis", "roblox-definitions.luau", "FAIL", "definition file rejected");
+            console.log(`${Paint.FAIL}  DEFINITIONS${Paint.OFF} rejected: ${String(Error.message || Error).slice(0, 240)}${Paint.OFF}`);
         }
     }
 

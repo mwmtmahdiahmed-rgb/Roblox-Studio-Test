@@ -47,9 +47,6 @@ local FabrikChains = Config.FabrikChains
 
 local RootJointIndex = Config.JointIndex.Root
 
-local LocomotionIdleMax = Config.Locomotion.IdleMax
-local LocomotionWalkMax = Config.Locomotion.WalkMax
-
 local JumpStateGrounded = 0
 local JumpStateAnticipation = 1
 local JumpStateLaunch = 2
@@ -70,7 +67,6 @@ local CFrameAngles = CFrame.fromEulerAnglesXYZ
 local CFrameIdentity = CFrame.identity
 local Vector3New = Vector3.new
 
-local Enum = Enum
 local PosePipeline = {}
 
 --=========================================================
@@ -81,7 +77,6 @@ local PosePipeline = {}
 
 local PoseBuffer = require(script.Parent.PoseBuffer)
 local WritePoseAdd = PoseBuffer.WritePoseAdd
-local WritePoseBlend = PoseBuffer.WritePoseBlend
 local PoseBufferLength = PoseBuffer.PoseBufferLength
 local PoseBytesPerJoint = PoseBuffer.PoseBytesPerJoint
 
@@ -141,12 +136,12 @@ local SampleClip
 local CharacterMotionState = require(script.Parent.CharacterMotionState)({
     Config = Config,
     DispatchEvent = DispatchEvent,
+    MathLib = MathLib,
     -- Assigned in [4]; the closure reads the upvalue, so it picks up the real function.
     SampleClip = function(...)
         return SampleClip(...)
     end,
 })
-local GetJumpSegment = CharacterMotionState.GetJumpSegment
 local UpdateJump = CharacterMotionState.UpdateJump
 local UpdateGestures = CharacterMotionState.UpdateGestures
 

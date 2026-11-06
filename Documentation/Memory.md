@@ -4,7 +4,7 @@
 > finished, what is broken, and what to do next. If this file and the source disagree,
 > **the source wins** — and this file is then wrong and must be corrected.
 
-Last verified: 2026-11-06, branch `arena/53eb14ce-roblox-studio-test`.
+Last verified: 2026-11-06, branch `arena/3fd81267-roblox-studio-test`.
 
 ---
 
@@ -240,6 +240,36 @@ scope for the defect list in Phase 2 and must not be silently "fixed" inside an 
   **Measure pose via `Transform:ToEulerAnglesXYZ()`.** Never report a zero `Position` as
   "animation is broken".
 
+### Defects found by switching the type checker on (2026-11-06)
+
+All four were live in `main` while the 377-case runtime suite was green. None was reachable by
+the old suite, which is the whole argument for keeping analysis on.
+
+1. **`ClientRigKinematics` — uninitialised function upvalue.** `local ApplyWorldDirection` (a
+   forward declaration) was followed much later by `local function ApplyWorldDirection`, which
+   *shadows* rather than assigns. The FABRIK spine chain therefore called `nil` every frame on
+   any rig with a Chest joint. Fix: drop the second `local` so it assigns the upvalue.
+2. **`Tools/verify/src/02-mock-services.luau` — undefined global `UpperTorso`.** The mock built
+   `local Torso = MakePart(..., "UpperTorso", ...)` but wired `Neck.Part0`, `Waist.Part1` and
+   `Chest.Part1` from the bare global `UpperTorso`, i.e. `nil`. The mock rig was structurally
+   invalid and hid the real FABRIK code path entirely.
+3. **`CharacterMotionState` — nil `MathLib` on the jump path.** `MathLib.Clamp01` was called in
+   `UpdateJump`, but the module never received `MathLib`; it was never passed in the dependency
+   table. Every jump would have thrown. Fix: inject it from `ClientPosePipeline`.
+4. **`AnimationNetwork.Shutdown` — bare `ReleaseRemotePose(Player)`.** The function lives on
+   `Network` (`Network.ReleaseRemotePose`), so the call was `nil`. It was masked because the
+   harness's server player list is empty during shutdown; any real server with a tracked player
+   would have thrown mid-teardown.
+
+Also fixed: **two vacuous jump tests.** The integration suite called `Humanoid.SetState(...)`
+with a dot; the mock's method is `SetState(self, NewState)`, so the enum landed in `self` and
+`NewState` was `nil` — no `StateChanged` ever fired and all five jump assertions passed without
+entering `UpdateJump`. That is exactly what let defect 3 hide. Now asserted behaviourally via
+`BindToEvent` counters.
+
+**Lesson:** `print` from the Luau VM is not forwarded to the reporter. To inspect a value inside
+a test, put it in a `Kit.Pass(name, detail)` or a failing assertion — not a `print`.
+
 ---
 
 ## 6. How to verify anything
@@ -264,17 +294,28 @@ analysis are genuine.
 | `math` | 80 | Easing, bezier, spline, waves, noise, FABRIK, lerp/slerp numerics |
 | `config` | 62 | Joint tables, clip compilation, gesture data, packet constants |
 | `network` | 67 | Packet layout byte-by-byte, quantization round-trip, bounds rejection |
-| `integration` | 54 | Boot, setup, pose actually changes, IK, gestures, throttling, teardown |
+| `integration` | 61 | Boot, setup, pose actually changes, IK, gestures, throttling, teardown |
 | `bootstrap` | 26 | Both bootstrappers execute, lifecycle, require graph acyclic, size rule |
 | `api` | 2 | 138 exports unchanged vs `baseline/api.json` |
 | `lifecycle` | 50 | Connection tracker, `Destroy`/`Shutdown`, player tracking, no bare connects |
 
-**Latest result: PASS 377 | FAIL 0 | BLOCKED 0, 26/26 files compile.**
+**Latest result: PASS 410 | FAIL 0 | BLOCKED 0, 26/26 files compile,
+analysis 0 errors / 0 warnings / 0 definition gaps.**
+
+The type checker is now **on by default**. `roblox-definitions.luau` supplies a partial,
+hand-written Roblox surface (`game`, `script`, `Vector3`, `CFrame`, `Enum`, `Instance`,
+`task`, `RaycastParams`, `RBXScriptConnection`, ...). Without it, every Roblox global was
+reported as an unknown global, those were classified as "definition gaps" and filtered out of
+the failures — analysis would have looked green while checking almost nothing. A missing or
+rejected definition file is therefore a hard `FAIL`.
+
+Writing the definition file is what made the checker useful: it immediately surfaced four real
+defects that the 377-case runtime suite had passed straight over (see §5).
 
 Known harness limitations:
 
-- Type checking (`--analysis`) is wired but the Roblox definitions file is not yet written,
-  so it is run with `--no-analysis` and does not currently verify strict-mode cleanliness.
+- The definition file is **partial by design**; it declares only the surface the framework
+  touches, with loose types. It catches undefined names and nil indexing, not API misuse.
 - Verification is source-level. It cannot prove Studio behaviour, rendering, or physics
   interaction.
 - A passing suite proves the tested property, not the absence of all defects.
@@ -282,6 +323,18 @@ Known harness limitations:
 ---
 
 ## 7. Open issues
+
+### Phase 3 — COMPLETE
+
+**PASS.** All exit criteria are now met: target hierarchy (`Client/Runtime`,
+`Shared/Config/{Data,Compile}`, `Shared/Math/{Core,Curves,IK,Waves}`,
+`Shared/Networking/{Constants,Receive}`), every script ≤ 500 lines, no duplicate or obsolete
+modules, documentation present, and static analysis clean (0 errors / 0 warnings /
+0 definition gaps). Shipped in two PRs: #2 (architecture + documentation) and the PR that closes
+the typing item.
+
+Scope caveat, carried forward: this certifies *structure and analysis*, not that animation runs
+on a real character. The AnimationConstraint rig blocker below is untouched.
 
 ### Phase 4 result
 
@@ -291,8 +344,9 @@ proof that animation runs on a real character — see the rig blocker above.
 
 ### Verification / tooling
 
-- **Analysis (type checker) disabled.** Needs `roblox-definitions.luau`. This is the last
-  outstanding item of the Phase 3 exit criteria that concerns typing.
+- **Analysis (type checker): DONE (2026-11-06).** `roblox-definitions.luau` written; project is
+  clean under `mode: "nonstrict"`. Phase 3's typing exit item is closed. `--!strict` migration
+  is a separate, still-unstarted item (Phase 6, 0/26).
 - **No `*.project.json`.** The repository has no Rojo project file, so the
   `ROJO_OHIO_MUMBAI/` → DataModel mapping is a convention enforced only by the harness
   (filename suffixes and directory names). Worth adding a real project file.

@@ -343,7 +343,7 @@ function MathLib.LerpVector3(From, To, Alpha)
     )
 end
 
-local function QuaternionFromCFrame(CFrame)
+local function QuaternionFromCFrame(CFrame): (number, number, number, number)
     local Right = CFrame.XVector
     local Up = CFrame.YVector
     local Back = CFrame.ZVector

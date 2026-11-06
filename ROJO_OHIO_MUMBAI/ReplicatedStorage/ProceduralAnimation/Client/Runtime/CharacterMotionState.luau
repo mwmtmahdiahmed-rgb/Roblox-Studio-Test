@@ -13,13 +13,14 @@ local Config = Dependencies.Config
 local DispatchEvent = Dependencies.DispatchEvent
 -- Injected by the pose pipeline; clip sampling is owned there.
 local SampleClip = Dependencies.SampleClip
+-- Injected by the pose pipeline; used to clamp normalised jump phases.
+local MathLib = Dependencies.MathLib
 
 --=========================================================
 -- [1] CONSTANTS
 --=========================================================
 
 local JumpClips = Config.Compiled.Jump
-local GestureClips = Config.Compiled.Gestures
 local MaxGestures = Config.MaxGestures
 
 local JumpStateGrounded = 0
@@ -29,7 +30,6 @@ local JumpStateAirborne = 3
 local JumpStateLanding = 4
 local JumpStateRecovery = 5
 
-local Floor = math.floor
 local Exp = math.exp
 
 local MotionState = {}

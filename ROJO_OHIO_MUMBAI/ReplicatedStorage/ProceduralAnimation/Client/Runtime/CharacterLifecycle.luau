@@ -12,7 +12,6 @@
 return function(Dependencies)
 local Config = Dependencies.Config
 local Changelog = Dependencies.Changelog
-local Workspace = Dependencies.Workspace
 local Players = Dependencies.Players
 local Network = Dependencies.Network
 local FireBusEvent = Dependencies.FireBusEvent
