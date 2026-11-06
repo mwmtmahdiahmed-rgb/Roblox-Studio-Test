@@ -1,3 +1,4 @@
+--!strict
 --[[
     Tools/verify/LuaTests/04-integration-suite.luau
 
@@ -622,10 +623,13 @@ function Suite.Body(Cases)
     Kit.Equal("lifecycle.heartbeatDisconnected", Env.MockServices.RunService.Heartbeat.Count, 0,
         "Stop disconnects the Heartbeat connection")
 
-    -- Frames after Stop must not apply poses.
+    -- Frames after Stop must not apply poses: the heartbeat callback is disconnected, so
+    -- nothing rewrites Motor6D.Transform. Compare object identity, the same way the
+    -- teardown case does.
     local BeforeStoppedFrames = Waist.Transform
     Env.PumpFrames(10, 1.0 / 60.0)
-    Kit.True("lifecycle.stopHaltsUpdates", true)
+    Kit.True("lifecycle.stopHaltsUpdates", Waist.Transform == BeforeStoppedFrames,
+        "a stopped animator leaves Transform untouched")
 
     Kit.Guard("lifecycle.stopIsIdempotent", function()
         Animator.Stop()
@@ -645,10 +649,6 @@ function Suite.Body(Cases)
     end)
     Kit.Equal("lifecycle.stillSingleConnection", Env.MockServices.RunService.Heartbeat.Count, 1)
 
-    -- Placeholder to keep the earlier variable meaningful in the report.
-    if BeforeStoppedFrames == nil then
-        Kit.Fail("lifecycle.transformReadable", "Transform was nil")
-    end
 end
 
 return Suite

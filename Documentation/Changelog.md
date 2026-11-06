@@ -309,6 +309,24 @@ an entry, add it in **both** places.
 
 ---
 
+## 1.1.4
+
+### Harness hardening: `--!strict` everywhere, 500-line compliance for the harness, look-at docs corrected, one fake assertion replaced by the real check.
+
+- **Affected:** Tools/verify/src/01-mock-value-types.luau, Tools/verify/src/01b-mock-containers.luau (new), Tools/verify/src/02-mock-services.luau, Tools/verify/src/02b-mock-rig.luau (new), Tools/verify/src/03-env.luau, Tools/verify/src/03b-env-simulation.luau (new), Tools/verify/src/00-runner.luau, Tools/verify/src/04-testkit.luau, Tools/verify/roblox-definitions.luau, Tools/verify/LuaTests/*.luau, Tools/verify/verify.mjs, Tools/verify/README.md, Tools/verify/LuaTests/04-integration-suite.luau, ProceduralAnimator.luau, ClientRigKinematics.luau, ConfigData.luau (comment-only), Documentation/Memory.md
+- **Reason:** The 500-line and strict-typing rules were enforced only on the framework; the verification harness (tooling, never ships into the place) violated both (four chunks > 500 lines, 13 files without --!strict). The mock chunks are split by responsibility and combined by verify.mjs through shared table handles so identity of mock classes is preserved; LuaTests specs are documented-exempt from the 500-line cap (they close over stateful world-setup). The integration suite's always-true 'lifecycle.stopHaltsUpdates' assertion is now the real Transform-identity check. Framework comment blocks said the head look-at clamps to IkAngleLimitMin/Max; it does not (symmetric +/-IkAngleLimitMax) - comments corrected, no runtime change; IkAngleLimitMin is now documented as used only by IK world-direction limits. Also fixes two previously unreleased nits: 02-mock-services return now exposes HumanoidClass for the rig chunk, and verify.mjs compile-checks all harness src chunks (04-testkit.luau was never compiled). No framework behaviour changed, public API frozen, Config.Version stays 1.1.0. Gate: PASS 437 | FAIL 0.
+
+---
+
+## 1.1.5
+
+### Documentation consistency sweep after the harness split: living docs synced; historical records untouched.
+
+- **Affected:** `Documentation/Audit.md (appended addendum only), Documentation/Maintenance.md, Documentation/Memory.md, ROJO_OHIO_MUMBAI/ServerStorage/ZeroScript/Memory.luau`
+- **Reason:** After the 1.1.4 split the living docs still cited pre-split paths and the pre-split gate count. Audit.md's "Current gate" block and all historical changelog entries are append-only and were left byte-identical; the addendum records the post-split state (PASS 437 | FAIL 0). Maintenance.md now expects 437 and points at the harness's own rule note; Memory.md flags that the `UpperTorso` fix lives in `02b-mock-rig.luau`. No framework or harness code changed; the gate is unchanged; `Config.Version` stays `1.1.0`.
+
+---
+
 ## Entry format
 
 ```

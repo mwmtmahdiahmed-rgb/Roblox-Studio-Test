@@ -1,3 +1,4 @@
+--!strict
 --[[
     Tools/verify/LuaTests/05-bootstrap-suite.luau
 

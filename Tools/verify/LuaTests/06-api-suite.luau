@@ -1,3 +1,4 @@
+--!strict
 --[[
     Tools/verify/LuaTests/06-api-suite.luau
 

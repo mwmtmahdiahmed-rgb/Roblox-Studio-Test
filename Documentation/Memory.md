@@ -247,7 +247,7 @@ scope and must not be silently "fixed" inside an unrelated phase.
 1. **`ClientRigKinematics` — uninitialised function upvalue.** `local ApplyWorldDirection` was
    followed later by `local function ApplyWorldDirection`, shadowing instead of assigning.
    Fix: drop the second `local`.
-2. **`Tools/verify/src/02-mock-services.luau` — undefined global `UpperTorso`.** Mock rig was
+2. **`Tools/verify/src/02-mock-services.luau` — undefined global `UpperTorso`.** (The rig builder since moved to `02b-mock-rig.luau` in the 2026-11-06 split.) Mock rig was
    structurally invalid and hid the real FABRIK path.
 3. **`CharacterMotionState` — nil `MathLib` on the jump path.** Injected from
    `ClientPosePipeline`.
@@ -287,9 +287,9 @@ analysis are genuine.
 | `api` | 2 | Frozen surface vs `baseline/api.json` (additions reported, not failed) |
 | `lifecycle` | 50 | Connection tracker, `Destroy`/`Shutdown`, player tracking, no bare connects |
 
-**Latest result (2026-11-06, branch arena/4e24aa26-roblox-studio-test): PASS 433 | FAIL 0 |
+**Latest result (2026-11-06, branch arena/e0507aaf-roblox-studio-test): PASS 437 | FAIL 0 |
 BLOCKED 0, 28/28 files compile, analysis 0 errors / 0 warnings / 40 pre-existing definition
-gaps.**
+gaps. (On branch arena/4e24aa26-roblox-studio-test: PASS 433.)**
 
 Analysis classifications: **0 errors / 0 warnings / 40 definition gaps.** The definition file is
 **partial by design** (it declares only the surface the framework touches with loose types), so
@@ -297,7 +297,9 @@ engine-boundary expressions are classified as definition gaps rather than proven
 failures; a missing or rejected definition file is a hard FAIL. Gaps accepted so far are all in
 engine-object `:Methods`/indexing positions — do not "fix" them by widening types to `any`.
 
-`--!strict` migration (Phase 6): every script declares `--!strict` and the analysis is clean.
+`--!strict` migration (Phase 6): every framework script declares `--!strict` and the analysis is
+clean. The verification harness chunks declare `--!strict` too (added 2026-11-06 on
+arena/e0507aaf-roblox-studio-test, after the 500-line split — see §7 Tooling).
 Note: scripts may not return values under strict; the bootstrappers return handles through the
 required ModuleScripts instead. `any` remains only at engine-object boundaries
 (86 explicit `: any` sites, documented rationale: engine userdata and dependency-injection
@@ -374,6 +376,37 @@ including the one behaviour not visually verified (look-at axis signs).
 API export (additions reported, baseline untouched), config-key rules (new top-level keys only),
 hot-path allocation rules, the frozen packet policy, the dual changelog procedure, the release
 checklist, forbidden shortcuts, and GitHub-vs-Studio reality checks.
+
+### Tooling harness hardening — 2026-11-06 (branch arena/e0507aaf-roblox-studio-test)
+
+The verification harness now honours the same limits as the framework. All harness `.luau`
+sources open with `--!strict`, and `verify.mjs` compile-checks all of `src/` (the `MockFiles`
+list, previously only 4 of 7 chunks — `04-testkit.luau` was silently uncompiled).
+
+- **`src/01-mock-value-types.luau` split** → `01b-mock-containers.luau` (Signals, Instance mock,
+  Enum). 414 + 439 lines. The 01b chunk receives the Part A mock table and extends it in place.
+- **`src/02-mock-services.luau` split** → `02b-mock-rig.luau` (stock R15 rig builder). 445 +
+  232 + verify wiring; `02b` receives `(Mock, HumanoidClass, MockHelpers)` and assigns
+  `CreateR15Character` onto the same table (`Game.__Mock`); the `02` factory return therefore
+  gained `HumanoidClass` on top of the original exports (harness-internal, additive).
+- **`src/03-env.luau` split** → `03b-env-simulation.luau` (globals installation, virtual clock,
+  heartbeat pump, deferred queue, mock passthroughs, script introspection). 432 + 335 lines.
+  The core chunk stashes `Env.__Context` (module registry, require stack, host-compiler
+  getter); the simulation chunk consumes it. `Env.RecordLog` is exposed for its logger use.
+- **`LuaTests/04-integration-suite.luau`** — the always-true assertion
+  `lifecycle.stopHaltsUpdates` is now the real `Transform`-identity check (same technique as the
+  teardown case); the dead `BeforeStoppedFrames` placeholder removed.
+- **`LuaTests/*.luau` are documented-exempt from the 500-line cap** (only
+  `04-integration-suite.luau` exceeds it, at 655): they are test specifications closing over
+  stateful world-setup; splitting would duplicate fragile setup for zero behaviour gain.
+  Framework stays 100% ≤ 500 (max: ConfigData.luau, 495). See `Tools/verify/README.md`.
+- **Comment accuracy (framework, comment-only, no runtime change):** head look-at clamps
+  pitch/yaw symmetrically to ±`Config.IkAngleLimitMax`; the `SetLookAtTarget` doc, the
+  `ApplyLookAt` header and the `Config.LookAt` comment said `IkAngleLimitMin/Max` — corrected.
+  The `IkAngleLimitMin` key is now documented as used only by IK world-direction limits.
+- Gate after the work: **PASS 437 | FAIL 0** (was 433 on the previous branch tip), Compilation
+  28/28, Analysis 0/0/40, `rojo-check.mjs` OK. Branch is ahead of merged `main` (5cda17d) by
+  these tooling commits; not yet merged.
 
 ### Verification / tooling
 

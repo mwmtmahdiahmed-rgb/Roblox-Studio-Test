@@ -333,8 +333,9 @@ end
 -- Sets the world-space point the head aims at, on every active local character. Omitting Weight
 -- selects 1. Pass nil as the position to fade aiming OUT: the last target is retained while the
 -- smoothed weight eases to zero, so the head eases back to neutral instead of snapping.
--- Smoothing is Config.LookAt.Smoothing (exponential approach); the angle limits reuse
--- Config.IkAngleLimitMin/Max. Weight 0 disables aiming even with a target set.
+-- Smoothing is Config.LookAt.Smoothing (exponential approach); pitch and yaw are clamped
+-- symmetrically to ±Config.IkAngleLimitMax (the Min key is unused by this path).
+-- Weight 0 disables aiming even with a target set.
 function Animator.SetLookAtTarget(TargetPosition: any, Weight: number?): ()
     local Clamped = 1.0
     if Weight ~= nil then

@@ -1,3 +1,4 @@
+--!strict
 --[[
     Tools/verify/src/00-runner.luau
 

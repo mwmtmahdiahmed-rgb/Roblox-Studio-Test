@@ -1,3 +1,4 @@
+--!strict
 --[[
     Tools/verify/LuaTests/07-lifecycle-suite.luau
 
