@@ -706,8 +706,16 @@ InstanceMetatable.__newindex = function(Self, Key, NewValue)
     rawset(Self, Key, NewValue)
 end
 
+-- Class initialisers let other harness layers attach behaviour to a class name (remotes get
+-- their event signals this way) without the value-type layer depending on them.
+InstanceClass.ClassInitialisers = {}
+
+function InstanceClass.RegisterClassInitialiser(ClassName, Initialiser)
+    InstanceClass.ClassInitialisers[ClassName] = Initialiser
+end
+
 function InstanceClass.new(ClassName, Name)
-    return setmetatable({
+    local Value = setmetatable({
         ClassName = ClassName or "Instance",
         Name = Name or ClassName or "Instance",
         _Parent = nil,
@@ -723,6 +731,11 @@ function InstanceClass.new(ClassName, Name)
         AttributeChanged = SignalClass.new(),
         Changed = SignalClass.new(),
     }, InstanceMetatable)
+    local Initialiser = InstanceClass.ClassInitialisers[ClassName]
+    if Initialiser then
+        Initialiser(Value)
+    end
+    return Value
 end
 
 local Instance = {

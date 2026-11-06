@@ -173,16 +173,19 @@ local function MakeRemote(ClassName, IsUnreliable)
     Value.LastClientPayload = nil
     Value.ServerFireHistory = {}
     Value.ServerFireHistoryCount = 0
+    Value.Sender = nil
 
     function Value.FireServer(RemoteSelf, ...)
         RemoteSelf.ClientSentCount += 1
         RemoteSelf.LastClientPayload = { ... }
-        SignalClass.Fire(RemoteSelf.OnServerEvent, ...)
+        -- Real remotes deliver the calling player as the first argument.
+        SignalClass.Fire(RemoteSelf.OnServerEvent, RemoteSelf.Sender, ...)
     end
 
     function Value.FireClient(RemoteSelf, Client, ...)
         RemoteSelf.ServerSentCount += 1
         RemoteSelf.LastServerPayload = { ... }
+        RemoteSelf.LastServerTarget = Client
         RemoteSelf.ServerFireHistoryCount += 1
         RemoteSelf.ServerFireHistory[RemoteSelf.ServerFireHistoryCount] = { Client, ... }
         SignalClass.Fire(RemoteSelf.OnClientEvent, ...)
@@ -201,6 +204,65 @@ local Remotes = {
         return MakeRemote(ClassName or "RemoteEvent", ClassName == "UnreliableRemoteEvent")
     end,
 }
+
+-- Remotes created with Instance.new must carry their event signals.
+InstanceClass.RegisterClassInitialiser("RemoteEvent", function(Value)
+    Value.ClientSentCount = 0
+    Value.ServerSentCount = 0
+    Value.ServerFireHistory = {}
+    Value.ServerFireHistoryCount = 0
+    Value.OnServerEvent = SignalClass.new()
+    Value.OnClientEvent = SignalClass.new()
+    Value.FireServer = function(Self, ...)
+        Self.ClientSentCount = (Self.ClientSentCount or 0) + 1
+        Self.LastClientPayload = { ... }
+        SignalClass.Fire(Self.OnServerEvent, Self.Sender, ...)
+    end
+    Value.FireClient = function(Self, Client, ...)
+        Self.ServerSentCount = (Self.ServerSentCount or 0) + 1
+        Self.LastServerTarget = Client
+        Self.ServerFireHistory = Self.ServerFireHistory or {}
+        Self.ServerFireHistoryCount = (Self.ServerFireHistoryCount or 0) + 1
+        Self.ServerFireHistory[Self.ServerFireHistoryCount] = { Client, ... }
+        SignalClass.Fire(Self.OnClientEvent, ...)
+    end
+    Value.FireAllClients = function(Self, ...)
+        SignalClass.Fire(Self.OnClientEvent, ...)
+    end
+end)
+
+InstanceClass.RegisterClassInitialiser("UnreliableRemoteEvent", function(Value)
+    Value.IsUnreliable = true
+    Value.ClientSentCount = 0
+    Value.ServerSentCount = 0
+    Value.ServerFireHistory = {}
+    Value.ServerFireHistoryCount = 0
+    Value.OnServerEvent = SignalClass.new()
+    Value.OnClientEvent = SignalClass.new()
+    Value.FireServer = function(Self, ...)
+        Self.ClientSentCount = (Self.ClientSentCount or 0) + 1
+        Self.LastClientPayload = { ... }
+        SignalClass.Fire(Self.OnServerEvent, Self.Sender, ...)
+    end
+    Value.FireClient = function(Self, Client, ...)
+        Self.ServerSentCount = (Self.ServerSentCount or 0) + 1
+        Self.LastServerTarget = Client
+        Self.ServerFireHistory = Self.ServerFireHistory or {}
+        Self.ServerFireHistoryCount = (Self.ServerFireHistoryCount or 0) + 1
+        Self.ServerFireHistory[Self.ServerFireHistoryCount] = { Client, ... }
+        SignalClass.Fire(Self.OnClientEvent, ...)
+    end
+    Value.FireAllClients = function(Self, ...)
+        SignalClass.Fire(Self.OnClientEvent, ...)
+    end
+end)
+
+InstanceClass.RegisterClassInitialiser("BindableEvent", function(Value)
+    Value.Event = SignalClass.new()
+    Value.Fire = function(Self, ...)
+        SignalClass.Fire(Self.Event, ...)
+    end
+end)
 
 --=========================================================
 -- [6] CHARACTER RIG

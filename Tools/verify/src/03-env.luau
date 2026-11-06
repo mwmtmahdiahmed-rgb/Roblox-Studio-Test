@@ -339,6 +339,12 @@ function Env.IsCached(ModulePath)
     return ModuleCache[ModulePath] ~= nil
 end
 
+-- Drops one module from the cache so it can be re-required under a different side
+-- (server vs client), which is how the harness simulates both roles in one VM.
+function Env.PurgeCache(ModulePath)
+    ModuleCache[ModulePath] = nil
+end
+
 function Env.ResetModuleCache()
     ModuleCache = {}
     RequireEdges = {}
@@ -505,7 +511,87 @@ end
 function Env.Boot(MockServices, MockValues)
     InstallGlobals(MockServices, MockValues)
     Env.BindSignalClass(MockValues.SignalClass, MockServices.RunService)
+    Env.MockServices = MockServices
+    Env.MockValues = MockValues
+    Env.Mock = MockServices.MockHelpers
     return true
+end
+
+--=========================================================
+-- [9] SIMULATION PASSTHROUGHS
+--=========================================================
+
+function Env.SetServerMode(Enabled)
+    Env.Mock.SetServerMode(Enabled)
+end
+
+function Env.SetRaycastHandler(Handler)
+    Env.Mock.SetRaycastHandler(Handler)
+end
+
+function Env.CreateCharacter(Name, Options)
+    return Env.Mock.CreateR15Character(Name, Options)
+end
+
+function Env.CreatePlayer(Name, UserId)
+    return Env.Mock.CreatePlayer(Name, UserId)
+end
+
+function Env.AddPlayer(Player)
+    return Env.Mock.AddPlayer(Player)
+end
+
+function Env.RemovePlayer(Player)
+    return Env.Mock.RemovePlayer(Player)
+end
+
+function Env.SetCharacter(Player, Character)
+    return Env.Mock.SetCharacter(Player, Character)
+end
+
+function Env.GetPlayers()
+    return Env.Mock.GetPlayers()
+end
+
+-- Fires RunService.Heartbeat DeltaSeconds times with a fixed step and drains deferred tasks.
+-- Sets who the mock remotes treat as the calling client.
+function Env.SetRemoteSender(Player)
+    local Root = Env.MockServices.ReplicatedStorage:FindFirstChild("ProceduralAnimation")
+    if not Root then
+        return nil
+    end
+    local RemotesFolder = Root:FindFirstChild("Remotes")
+    if not RemotesFolder then
+        return nil
+    end
+    for Index = 1, RemotesFolder.ChildCount do
+        local Child = RemotesFolder.ChildList[Index]
+        if Child.OnServerEvent ~= nil then
+            Child.Sender = Player
+        end
+    end
+    return Player
+end
+
+function Env.GetRemote(Name)
+    local Root = Env.MockServices.ReplicatedStorage:FindFirstChild("ProceduralAnimation")
+    if not Root then
+        return nil
+    end
+    local RemotesFolder = Root:FindFirstChild("Remotes")
+    if not RemotesFolder then
+        return nil
+    end
+    return RemotesFolder:FindFirstChild(Name)
+end
+
+function Env.PumpFrames(Count, Step)
+    local DeltaTime = Step or (1.0 / 60.0)
+    for _ = 1, Count do
+        Env.FireHeartbeat(DeltaTime)
+        Env.DrainDeferred()
+    end
+    return Count
 end
 
 function Env.GetTree()
