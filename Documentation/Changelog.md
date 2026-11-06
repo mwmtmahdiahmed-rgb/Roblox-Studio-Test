@@ -199,6 +199,17 @@ an entry, add it in **both** places.
 
 ---
 
+## 1.0.5
+
+### Verification analyzer enabled: a hand-written definition file turns the type checker on, and it immediately found real defects.
+
+- **Affected:** `Tools/verify/roblox-definitions.luau (new), Tools/verify/verify.mjs, ClientRigKinematics, Tools/verify/src/02-mock-services.luau, CharacterMotionState, ClientPosePipeline, AnimationNetwork, ProceduralAnimator, ClientPosePipeline, CharacterLifecycle, ConfigData, MathCore`
+- **Reason:** Phase 3's last exit item. Without the definition file every Roblox global was reported as an unknown global, and those were reclassified as "definition gaps" and filtered out of the failures — analysis looked green while checking almost nothing (it reported 127 diagnostics: 1 error / 42 warnings / 84 gaps; enabling the checker took that to 0). The newly enabled checker then found: (1) a shadowed `local function ApplyWorldDirection` after a forward declaration, so the FABRIK spine chain called nil for any rig with a Chest joint, plus an undefined `UpperTorso` global in the test mock that had hidden the path from every test (now covered by the `setup.withChest` integration case); (2) a nil `MathLib` on the jump path, a bare `ReleaseRemotePose` call in `AnimationNetwork.Shutdown`, and two vacuous jump tests; (3) 36 dead locals and an unannotated `QuaternionFromCFrame` return contract poisoning the `Acos(Clamp(...))` chain. Behaviour unchanged; packet layout and public API untouched.
+
+*Restored in 2026-11-06 (changelog 1.1.6): this section was missing from this file although `Shared/Changelog.luau` carries four 1.0.5 entries. Condensed from those entries, verbatim in substance. The runtime copy additionally stores one late entry tagged `1.0.4` (verification-harness `Suite.Reset`/teardown defect) positioned after the 1.0.5 block; it is recorded there and was not re-ordered (changelog entries are append-only).*
+
+---
+
 ## 1.0.6
 
 ### Extracted the bootstrap lifecycle logic out of the StarterPlayer/ServerScriptService scripts into ModuleScripts that return lifecycle handles.
@@ -324,6 +335,15 @@ an entry, add it in **both** places.
 
 - **Affected:** `Documentation/Audit.md (appended addendum only), Documentation/Maintenance.md, Documentation/Memory.md, ROJO_OHIO_MUMBAI/ServerStorage/ZeroScript/Memory.luau`
 - **Reason:** After the 1.1.4 split the living docs still cited pre-split paths and the pre-split gate count. Audit.md's "Current gate" block and all historical changelog entries are append-only and were left byte-identical; the addendum records the post-split state (PASS 437 | FAIL 0). Maintenance.md now expects 437 and points at the harness's own rule note; Memory.md flags that the `UpperTorso` fix lives in `02b-mock-rig.luau`. No framework or harness code changed; the gate is unchanged; `Config.Version` stays `1.1.0`.
+
+---
+
+## 1.1.6
+
+### Dual-changelog parity restored: the markdown changelog was missing the 1.0.5 section present in the runtime copy; living docs re-synced to merged `main` (`5109f27`).
+
+- **Affected:** `Documentation/Changelog.md, Documentation/Memory.md, ROJO_OHIO_MUMBAI/ServerStorage/ZeroScript/Memory.luau`
+- **Reason:** A version-set audit showed Documentation/Changelog.md jumps 1.0.4 to 1.0.6 while Shared/Changelog.luau carried four 1.0.5 entries (analyzer enabled via a hand-written roblox-definitions file; ApplyWorldDirection shadowing + UpperTorso mock defect fixed; MathLib jump-path nil and ReleaseRemotePose call fixed; 36 dead locals removed); the 1.0.5 section has been restored from those entries, verbatim in substance and marked as a restoration. The luau copy additionally stores one late entry tagged 1.0.4 (harness Suite.Reset/teardown defect) after the 1.0.5 block; it was recorded as-is and not reordered (append-only). Memory.md and ZeroScript/Memory.luau headers and result lines now name main @ 5109f27 (PR #7) instead of the merged 4e24aa26/e0507aaf branch refs. No framework or harness code changed; gate unchanged (PASS 437 | FAIL 0); Config.Version stays 1.1.0.
 
 ---
 

@@ -338,6 +338,12 @@ Changelog.Entries = {
         File = "Documentation/Audit.md, Documentation/Maintenance.md, Documentation/Memory.md, ROJO_OHIO_MUMBAI/ServerStorage/ZeroScript/Memory.luau",
         Reason = "After the 1.1.4 split the living docs still cited pre-split paths and the pre-split gate count. Audit.md's 'Current gate' block and all historical changelog entries are append-only and were left byte-identical; the addendum records the post-split state (PASS 437 | FAIL 0). Maintenance.md now expects 437 and points at the harness rule note; Memory.md flags that the UpperTorso fix lives in 02b-mock-rig.luau. No framework or harness code changed; the gate is unchanged; Config.Version stays 1.1.0.",
     },
+    {
+        Version = "1.1.6",
+        Description = "Dual-changelog parity restored: the markdown changelog was missing the 1.0.5 section present in the runtime copy; living docs re-synced to merged main (5109f27).",
+        File = "Documentation/Changelog.md, Documentation/Memory.md, ROJO_OHIO_MUMBAI/ServerStorage/ZeroScript/Memory.luau",
+        Reason = "A version-set audit showed Documentation/Changelog.md jumps 1.0.4 to 1.0.6 while Shared/Changelog.luau carried four 1.0.5 entries (analyzer enabled via a hand-written roblox-definitions file; ApplyWorldDirection shadowing + UpperTorso mock defect fixed; MathLib jump-path nil and ReleaseRemotePose call fixed; 36 dead locals removed); the 1.0.5 section has been restored from those entries, verbatim in substance and marked as a restoration. The luau copy additionally stores one late entry tagged 1.0.4 (harness Suite.Reset/teardown defect) after the 1.0.5 block; it was recorded as-is and not reordered (append-only). Memory.md and ZeroScript/Memory.luau headers and result lines now name main @ 5109f27 (PR #7) instead of the merged 4e24aa26/e0507aaf branch refs. No framework or harness code changed; gate unchanged (PASS 437 | FAIL 0); Config.Version stays 1.1.0.",
+    },
 }
 
 --=========================================================

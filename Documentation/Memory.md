@@ -4,7 +4,7 @@
 > finished, what is broken, and what to do next. If this file and the source disagree,
 > **the source wins** — and this file is then wrong and must be corrected.
 
-Last verified: 2026-11-06, branch `arena/4e24aa26-roblox-studio-test`.
+Last verified: 2026-11-06, `main` @ `5109f27` (PR #6 `5cda17d`, PR #7 `5109f27`); re-verified on branch `arena/eca5694a-roblox-studio-test`.
 
 ---
 
@@ -287,7 +287,7 @@ analysis are genuine.
 | `api` | 2 | Frozen surface vs `baseline/api.json` (additions reported, not failed) |
 | `lifecycle` | 50 | Connection tracker, `Destroy`/`Shutdown`, player tracking, no bare connects |
 
-**Latest result (2026-11-06, branch arena/e0507aaf-roblox-studio-test): PASS 437 | FAIL 0 |
+**Latest result (2026-11-06, `main` @ `5109f27` via PR #7; re-verified on branch arena/eca5694a-roblox-studio-test): PASS 437 | FAIL 0 |
 BLOCKED 0, 28/28 files compile, analysis 0 errors / 0 warnings / 40 pre-existing definition
 gaps. (On branch arena/4e24aa26-roblox-studio-test: PASS 433.)**
 
@@ -405,8 +405,8 @@ list, previously only 4 of 7 chunks — `04-testkit.luau` was silently uncompile
   `ApplyLookAt` header and the `Config.LookAt` comment said `IkAngleLimitMin/Max` — corrected.
   The `IkAngleLimitMin` key is now documented as used only by IK world-direction limits.
 - Gate after the work: **PASS 437 | FAIL 0** (was 433 on the previous branch tip), Compilation
-  28/28, Analysis 0/0/40, `rojo-check.mjs` OK. Branch is ahead of merged `main` (5cda17d) by
-  these tooling commits; not yet merged.
+  28/28, Analysis 0/0/40, `rojo-check.mjs` OK. Both tooling commits (`dd92f40`, `26881a5`)
+  merged to `main` as `5109f27` via PR #7 (2026-11-06T06:38Z); CI green on the PR and on `main`.
 
 ### Verification / tooling
 
