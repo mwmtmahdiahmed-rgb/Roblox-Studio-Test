@@ -4,7 +4,7 @@
 > finished, what is broken, and what to do next. If this file and the source disagree,
 > **the source wins** — and this file is then wrong and must be corrected.
 
-Last verified: 2026-11-06, `main` @ `4bfc7e7` (PR #6 `5cda17d`, PR #7 `5109f27`, PR #8 `3ca2731`, PR #9 `4bfc7e7`); re-verified on branch `arena/d93936b0-roblox-studio-test`.
+Last verified: 2026-11-06, `main` @ `7ff8ea2` (PR #6 `5cda17d`, PR #7 `5109f27`, PR #8 `3ca2731`, PR #9 `4bfc7e7`, PR #10 `7ff8ea2`); re-verified on branch `arena/aa40e5c9-roblox-studio-test`.
 
 ---
 
@@ -288,7 +288,7 @@ analysis are genuine.
 | `lifecycle` | 50 | Connection tracker, `Destroy`/`Shutdown`, player tracking, no bare connects |
 | `relaydefense` | 11 | Server relay hardening: token-bucket rate limiter (pose + event channels), registered-player gate on events, sequence gate independent of tokens; probe-delta assertions (shared VM, shared remotes) |
 
-**Latest result (2026-11-06, `main` @ `4bfc7e7` via PR #9; re-verified on branch arena/d93936b0-roblox-studio-test + relay-defense work): PASS 448 | FAIL 0 |
+**Latest result (2026-11-06, `main` @ `7ff8ea2` via PR #10; re-verified on branch arena/aa40e5c9-roblox-studio-test): PASS 448 | FAIL 0 |
 BLOCKED 0, 28/28 files compile, analysis 0 errors / 0 warnings / 40 pre-existing definition
 gaps. (On branch arena/4e24aa26-roblox-studio-test: PASS 433.)**
 
@@ -413,6 +413,8 @@ list, previously only 4 of 7 chunks — `04-testkit.luau` was silently uncompile
   PR and on `main` (run `42178478823`).
   Docs re-sync (changelog 1.1.9) reached `main` as `4bfc7e7` via PR #9 (2026-11-06T07:31Z); CI green on the
   PR and on `main` (run `42181483389`).
+  Relay defense + docs batch (changelogs 1.1.10-1.1.13) reached `main` as `7ff8ea2` via PR #10 (2026-11-06T09:21Z);
+  CI green on the PR and on `main` (run `42194421513`).
 - **Relay defense (2026-11-06, 1.1.13)** — server-side token-bucket rate limiter added to `AnimationNetwork.luau`
   (both relay channels, derived from `Config.SendRate`, no new config keys, **no packet-format or API change**);
   `OnServerEvent` gained the registered-player gate `OnServerPose` already had. New suite `LuaTests/08-relay-defense-suite.luau`
