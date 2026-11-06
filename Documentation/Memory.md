@@ -64,6 +64,11 @@ ROJO_OHIO_MUMBAI/                       <- maps to the Roblox DataModel root
 └── StarterPlayerScripts/               <- client entry (thin, harness-suffixed name)
 ```
 
+The `.luau` extension suffixes (`.local` → LocalScript, `.legacy` → Script) are harness
+conventions read by `Tools/verify/verify.mjs`; the Rojo build in `ProceduralAnimation.project.json`
+instead forces instance classes explicitly via tree keys. Both must stay in sync — `rojo-check.mjs`
+enforces the link statically.
+
 The StarterPlayer / ServerScriptService entries are **thin harness-legal scripts** (a LocalScript
 may not return values, and scripts may not return values in `--!strict`); they `require` the
 `Client/Bootstrap` / `Server/Bootstrap` ModuleScripts inside `ProceduralAnimation`, which contain
@@ -370,8 +375,13 @@ checklist, forbidden shortcuts, and GitHub-vs-Studio reality checks.
 - **Studio MCP is BLOCKED** in this environment; GitHub-vs-Studio parity is **BLOCKED**, not
   verified. All work is on the local clone. The AnimationConstraint blocker requires a playtest,
   which is prohibited without explicit authorization.
-- **No `*.project.json`.** The `ROJO_OHIO_MUMBAI/` → DataModel mapping is a convention enforced
-  by the harness (filename suffixes and directory names). Worth adding a real project file.
+- **`ProceduralAnimation.project.json` exists** (repo root, Rojo 7 format). It maps
+  `ROJO_OHIO_MUMBAI/` onto the DataModel for placeId 139066482915692 via explicit tree keys;
+  the two starter entries force `$className LocalScript` / `Script` (the `.local`/`.legacy`
+  suffixes remain harness-only conventions). `node Tools/verify/rojo-check.mjs` statically
+  verifies coverage, path existence and conventions. `rojo build` was never executed here —
+  Rojo release assets are unreachable from this sandbox — so validate the build on a network
+  that can reach GitHub releases before publishing.
 - **R6 support:** not implemented (clip data is R15-only). Deferred.
 
 ---
@@ -387,7 +397,7 @@ checklist, forbidden shortcuts, and GitHub-vs-Studio reality checks.
 
 ## 9. Session end checklist
 
-1. Re-run the full suite (`node verify.mjs`).
+1. Re-run the full suite (`node verify.mjs`) and `node Tools/verify/rojo-check.mjs` if files moved.
 2. Update this file with the new state and any new gotcha.
 3. **Append** to `Shared/Changelog.luau` — never overwrite, never renumber historical entries.
 4. Mirror the entry into `Documentation/Changelog.md` and bump `Config.Version` if releasing.

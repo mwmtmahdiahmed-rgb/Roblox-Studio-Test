@@ -6,3 +6,8 @@ Tools/verify/dbg*.mjs
 # Editor / OS noise
 .DS_Store
 *.log
+
+# Rojo build artifacts
+*.rbxl
+*.rbxlx
+*.rbxl.gz

@@ -53,7 +53,7 @@ Suites: math 95 | config 62 | network 67 | integration 65 | bootstrap 26 | api 2
 |---|------|--------|
 | O1 | Default rig is skinned-mesh `AnimationConstraint` with zero `Motor6D` — `CacheJoints` aborts ("missing R15 joint Waist"). | **Blocker, architectural, needs explicit authorization + playtest.** Unchanged by Phases 6–8. |
 | O2 | Studio MCP unavailable; GitHub-vs-Studio parity unverified. | BLOCKED. All evidence is harness-local. |
-| O3 | No `*.project.json`; Rojo mapping is convention enforced by harness. | Open. Worth adding a real project file next. |
+| O3 | No `*.project.json`. | **CLOSED (2026-11-06).** Rojo 7 project file added (`ProceduralAnimation.project.json`, repo root); `Tools/verify/rojo-check.mjs` enforces coverage statically. `rojo build` not executed in this sandbox (release assets unreachable) — validate on a network that reaches GitHub releases. |
 | O4 | R6 unsupported (R15 clip data only). | Deferred by design. |
 | O5 | 40 definition gaps (engine-boundary expressions the partial `roblox-definitions.luau` cannot model). | Accepted; documented in Memory.md §6. Not failures. |
 | O6 | Squash impulse timing is one frame after the FloorMaterial poll that raises it. | Cosmetic; see F6. |

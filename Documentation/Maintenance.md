@@ -108,6 +108,7 @@ size. Default answer to "just add a field" is: don't.
    reads first).
 5. Tar backup of the tree before committing risky work:
    `tar -czf /home/user/backups/<label>-$(date +%Y%m%d-%H%M%S).tar.gz ROJO_OHIO_MUMBAI Tools Documentation`
+6. `node Tools/verify/rojo-check.mjs` — the project file still maps every source file.
 6. Commit on `arena/<id>-roblox-studio-test` (work happens only on this branch), push to
    `origin arena/<id>-roblox-studio-test`. No force-push, no rebase of public history, no
    other branches.
@@ -127,11 +128,24 @@ size. Default answer to "just add a field" is: don't.
 ## 10. GitHub vs Studio reality
 
 This repository is a *checkout*. The Roblox place (placeId `139066482915692`) is the deployment.
-Parity between the two has never been verified in this environment (Studio MCP blocked), and
-`.luau` suffixes (`.local`, `.legacy`) are harness conventions, not Rojo filename rules — there
-is no `*.project.json`. Until one exists, the mapping is enforced only by `verify.mjs`
-(`InstancePathOf`) and human discipline. When adding a file, keep the conventions exactly:
-PascalCase module names, correct directory, correct suffix.
+Parity between the two has never been verified in this environment (Studio MCP blocked).
+
+`ProceduralAnimation.project.json` (repository root) is the Rojo build: it maps
+`ROJO_OHIO_MUMBAI/` onto the DataModel for placeId 139066482915692 (`servePlaceIds`). The
+`.local`/`.legacy` filename suffixes remain *harness* conventions (`verify.mjs` classifies
+instances by them); the project file instead forces classes explicitly via tree keys — the
+client entry is `$className LocalScript` under `StarterPlayer.StarterPlayerScripts`, the server
+entry `$className Script` under `ServerScriptService`. Plain `.luau` files become `ModuleScript`
+automatically. Two rules follow:
+
+- **Every file under `ROJO_OHIO_MUMBAI/` must stay reachable from the project tree** —
+  `node Tools/verify/rojo-check.mjs` enforces this offline (paths exist, full coverage, no
+  repository escape, harness conventions hold). Run it after moving or adding files.
+- `rojo build` is the real authority and was **not executed in this sandbox** (Rojo release
+  assets redirect to object storage that the sandbox cannot reach; the npm wrapper downloads
+  from GitHub at runtime). Validate with `rojo build --output /tmp/out.rbxlx` on a network that
+  can reach GitHub releases before publishing the place; `rojo-check.mjs` only proves static
+  consistency. Build outputs (`*.rbxl*`) are gitignored.
 
 ## 11. When something breaks
 

@@ -43,5 +43,6 @@ Slop Game (placeId 139066482915692). Procedural animation framework for R15 avat
 
 ## Phase status
 - Phases 0-10 COMPLETE: discovery, math repair, critical defects, typing/checker, lifecycle, bootstrap extraction, --!strict migration, performance (StatePool early-out ~15x, root-write fast path, allocation removal), feature completion (velocity filter, arc length, springs, squash & stretch, look-at, joint amplitude), regression audit (Audit.md), maintenance docs (Maintenance.md, API.md).
-- Remaining: nothing in-scope. R6 deferred (no R6 clip data). No *.project.json yet (ROJO mapping is harness-enforced convention). AnimationConstraint rig blocker and Studio parity require explicit authorization / Studio access.
+- ProceduralAnimation.project.json exists (repo root): Rojo 7 build mapping ROJO_OHIO_MUMBAI/ -> DataModel for placeId 139066482915692; starter entries forced to LocalScript/Script via tree keys (.local/.legacy suffixes remain harness conventions). rojo-check.mjs statically verifies coverage + conventions; rojo build NOT executed in this sandbox (assets unreachable) — validate on a network that reaches GitHub releases before publishing.
+- Remaining: nothing in-scope. R6 deferred (no R6 clip data). AnimationConstraint rig blocker and Studio parity require explicit authorization / Studio access.
 ]==]

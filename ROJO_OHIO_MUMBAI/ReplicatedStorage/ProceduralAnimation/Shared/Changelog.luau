@@ -308,6 +308,12 @@ Changelog.Entries = {
         File = "ConfigData, Documentation/Changelog.md, Shared/Changelog.luau",
         Reason = "Minor release for Phase 8 feature completion. The API baseline (Tools/verify/baseline/api.json, frozen) permits added exports; nothing existing changed shape. 1.0.6 and 1.0.7 are changelog-only phases (no runtime Version bump); this entry records the release.",
     },
+    {
+        Version = "1.1.1",
+        Description = "Added ProceduralAnimation.project.json (Rojo 7 build) and Tools/verify/rojo-check.mjs; .gitignore covers build artifacts.",
+        File = "ProceduralAnimation.project.json (root, new), Tools/verify/rojo-check.mjs (new), .gitignore, Documentation/Memory.md, Maintenance.md, Audit.md",
+        Reason = "Close the long-open audit item O3. The project file maps ROJO_OHIO_MUMBAI/ onto the DataModel for placeId 139066482915692; the two harness-suffixed starter entries force $className LocalScript/Script via tree keys, so the .local/.legacy harness conventions stay untouched. rojo-check.mjs statically enforces path existence, full coverage of the source tree, repository containment and the harness conventions (28/28 files mapped; negative cases verified). 'rojo build' itself was not executed in this sandbox (Rojo release assets redirect to object storage the sandbox cannot reach); the build must be validated on a network that can reach GitHub releases before publishing the place. No framework code changed; Config.Version stays 1.1.0.",
+    },
 }
 
 --=========================================================

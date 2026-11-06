@@ -1,0 +1,36 @@
+{
+  "name": "SlopGame-ProceduralAnimation",
+  "servePlaceIds": [139066482915692],
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "ProceduralAnimation": {
+        "$path": "ROJO_OHIO_MUMBAI/ReplicatedStorage/ProceduralAnimation"
+      }
+    },
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "ProceduralAnimationServer": {
+        "$path": "ROJO_OHIO_MUMBAI/ServerScriptService/ProceduralAnimationServer.legacy.luau",
+        "$className": "Script"
+      }
+    },
+    "ServerStorage": {
+      "$className": "ServerStorage",
+      "ZeroScript": {
+        "$path": "ROJO_OHIO_MUMBAI/ServerStorage/ZeroScript"
+      }
+    },
+    "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "StarterPlayerScripts": {
+        "$className": "StarterPlayerScripts",
+        "ProceduralAnimationClient": {
+          "$path": "ROJO_OHIO_MUMBAI/StarterPlayerScripts/ProceduralAnimationClient.local.luau",
+          "$className": "LocalScript"
+        }
+      }
+    }
+  }
+}

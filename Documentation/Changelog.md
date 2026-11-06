@@ -279,6 +279,16 @@ an entry, add it in **both** places.
 - **Affected:** `ConfigData, Documentation/Changelog.md, Shared/Changelog.luau`
 - **Reason:** Minor release for Phase 8. The frozen API baseline (`Tools/verify/baseline/api.json`) permits added exports; nothing existing changed shape. 1.0.6/1.0.7 are changelog-only phases (no runtime Version bump).
 
+
+---
+
+## 1.1.1
+
+### Added `ProceduralAnimation.project.json` (Rojo 7 build) and `Tools/verify/rojo-check.mjs`; `.gitignore` covers build artifacts.
+
+- **Affected:** `ProceduralAnimation.project.json (new), Tools/verify/rojo-check.mjs (new), .gitignore, Documentation/Memory.md, Maintenance.md, Audit.md`
+- **Reason:** Closes audit item O3. The project file maps `ROJO_OHIO_MUMBAI/` onto the DataModel for placeId `139066482915692`; the two harness-suffixed starter entries force `$className LocalScript` / `Script` via tree keys, so the `.local`/`.legacy` harness conventions stay untouched. `rojo-check.mjs` statically enforces path existence, full coverage of the source tree, repository containment and the harness conventions (28/28 files mapped; negative cases verified). `rojo build` itself was not executed in this sandbox (Rojo release assets redirect to object storage the sandbox cannot reach); validate the build on a network that reaches GitHub releases before publishing. Framework code unchanged; `Config.Version` stays `1.1.0`.
+
 ---
 
 ## Entry format
