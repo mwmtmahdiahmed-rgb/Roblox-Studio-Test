@@ -1,3 +1,4 @@
+--!strict
 -- ProceduralAnimationServer
 -- Bootstrap only: registers players for relay validation and clears their state on leave.
 -- No developer call is required.
@@ -18,9 +19,9 @@ Network.Init()
 -- Script normally lives for the whole session, but an explicit lifecycle keeps the bootstrapper
 -- consistent with the client and makes it testable.
 local ConnectionsList = Connections.New()
-local Connected = {}
+local Connected: { [Instance]: boolean } = {}
 
-local function OnPlayerAdded(Player)
+local function OnPlayerAdded(Player: Player)
     if Connected[Player] then
         return
     end
@@ -28,7 +29,7 @@ local function OnPlayerAdded(Player)
     Network.RegisterPlayer(Player)
 end
 
-local function OnPlayerRemoving(Player)
+local function OnPlayerRemoving(Player: Player)
     if not Connected[Player] then
         return
     end
@@ -36,7 +37,7 @@ local function OnPlayerRemoving(Player)
     Network.UnregisterPlayer(Player)
 end
 
-for Index, Player in Players:GetPlayers() do
+for Index, Player in ipairs(Players:GetPlayers()) do
     OnPlayerAdded(Player)
 end
 
@@ -44,7 +45,7 @@ Connections.Add(ConnectionsList, Players.PlayerAdded:Connect(OnPlayerAdded))
 Connections.Add(ConnectionsList, Players.PlayerRemoving:Connect(OnPlayerRemoving))
 
 -- Releases the bootstrapper's connections and networking state. Idempotent.
-local Server = {}
+local Server: { [string]: any } = {}
 
 function Server.Destroy()
     Connections.DisconnectAll(ConnectionsList)

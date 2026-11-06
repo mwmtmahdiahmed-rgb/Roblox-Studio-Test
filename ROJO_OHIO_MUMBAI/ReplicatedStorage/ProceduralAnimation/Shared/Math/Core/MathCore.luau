@@ -1,6 +1,7 @@
+--!strict
 -- ProceduralAnimation/Shared/AnimationMathCore
 
-return function(MathLib, Private)
+return function(MathLib: { [string]: any }, Private: { BezierCurves: { [number]: any } }): { [string]: any }
 --=========================================================
 -- [1] CONSTANTS
 --=========================================================
@@ -284,7 +285,7 @@ MathLib.EasingCount = EasingCount
 -- [3] MATH
 --=========================================================
 
-function MathLib.Ease(EasingId, Alpha)
+function MathLib.Ease(EasingId: number, Alpha: number): number
     local Function = EasingFunctions[EasingId]
     if Function then
         return Function(Alpha)
@@ -292,15 +293,14 @@ function MathLib.Ease(EasingId, Alpha)
     local Curve = BezierCurves[EasingId]
     if Curve then
         if Curve.Kind == 1 then
-
-return MathLib.BezierQuadratic(Curve.P0, Curve.P1, Curve.P2, Alpha)
+            return MathLib.BezierQuadratic(Curve.P0, Curve.P1, Curve.P2, Alpha)
         end
         return MathLib.BezierCubic(Curve.P0, Curve.P1, Curve.P2, Curve.P3, Alpha)
     end
     return Alpha
 end
 
-function MathLib.Clamp01(Value)
+function MathLib.Clamp01(Value: number): number
     if Value < 0.0 then
         return 0.0
     elseif Value > 1.0 then
@@ -309,12 +309,12 @@ function MathLib.Clamp01(Value)
     return Value
 end
 
-function MathLib.SmoothFactor(Rate, DeltaTime)
+function MathLib.SmoothFactor(Rate: number, DeltaTime: number): number
     -- Frame-rate independent exponential smoothing.
     return 1.0 - Exp(-Rate * DeltaTime)
 end
 
-function MathLib.ShortestAngle(From, To)
+function MathLib.ShortestAngle(From: number, To: number): number
     local Difference = To - From
     while Difference > Pi do
         Difference -= TwoPi
@@ -329,11 +329,11 @@ end
 -- [4] LERPING
 --=========================================================
 
-function MathLib.LerpNumber(From, To, Alpha)
+function MathLib.LerpNumber(From: number, To: number, Alpha: number): number
     return From + (To - From) * Alpha
 end
 
-function MathLib.LerpVector3(From, To, Alpha)
+function MathLib.LerpVector3(From: Vector3, To: Vector3, Alpha: number): Vector3
     local FromX, FromY, FromZ = From.X, From.Y, From.Z
     local ToX, ToY, ToZ = To.X, To.Y, To.Z
     return Vector3New(
@@ -343,7 +343,7 @@ function MathLib.LerpVector3(From, To, Alpha)
     )
 end
 
-local function QuaternionFromCFrame(CFrame): (number, number, number, number)
+local function QuaternionFromCFrame(CFrame: CFrame): (number, number, number, number)
     local Right = CFrame.XVector
     local Up = CFrame.YVector
     local Back = CFrame.ZVector
@@ -386,7 +386,7 @@ local function CFrameFromQuaternion(PositionX, PositionY, PositionZ, QW, QX, QY,
     )
 end
 
-function MathLib.SlerpCFrame(From, To, Alpha)
+function MathLib.SlerpCFrame(From: CFrame, To: CFrame, Alpha: number): CFrame
     if Alpha <= 0.0 then
         return From
     elseif Alpha >= 1.0 then
@@ -442,7 +442,7 @@ function MathLib.SlerpCFrame(From, To, Alpha)
     return CFrameFromQuaternion(PositionX, PositionY, PositionZ, ResultW, ResultX, ResultY, ResultZ)
 end
 
-function MathLib.LerpCFrame(From, To, Alpha)
+function MathLib.LerpCFrame(From: CFrame, To: CFrame, Alpha: number): CFrame
     if Alpha <= 0.0 then
         return From
     elseif Alpha >= 1.0 then
