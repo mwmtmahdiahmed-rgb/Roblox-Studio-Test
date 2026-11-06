@@ -1,3 +1,4 @@
+--!strict
 --[[
     Tools/verify/LuaTests/02-config-suite.luau
 

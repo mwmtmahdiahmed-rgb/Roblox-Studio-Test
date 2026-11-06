@@ -277,6 +277,8 @@ end
 -- relative to the body's facing; the exponential weight smoothing means targets appear and
 -- disappear gradually instead of snapping. Yaw/pitch are clamped to the same limits as IK.
 -- Target and weights live on the state; a nil target disables aiming entirely.
+-- Pitch and yaw are clamped symmetrically to ±Config.IkAngleLimitMax (the Min key is unused
+-- here; IK world-direction limits are the only consumer of Config.IkAngleLimitMin).
 local function ApplyLookAt(State: any, DeltaTime: number): ()
     local TargetWeight = State.LookAtTargetWeight
     if TargetWeight == nil then

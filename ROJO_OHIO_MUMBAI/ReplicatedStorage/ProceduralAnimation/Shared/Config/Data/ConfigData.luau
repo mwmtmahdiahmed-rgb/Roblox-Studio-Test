@@ -56,8 +56,9 @@ Config.SquashStretch = {
 }
 
 -- Head look-at: Neck joint aims toward a target set via Animator.SetLookAtTarget.
--- Smoothing is the exponential rate at which the head weight approaches its target; angle
--- limits reuse Config.IkAngleLimitMin/Max. Absent a target, this costs one table read per frame.
+-- Smoothing is the exponential rate at which the head weight approaches its target; angle limits
+-- clamp pitch and yaw symmetrically to ±Config.IkAngleLimitMax. Absent a target, this costs one
+-- table read per frame.
 Config.LookAt = {
     Smoothing = 8.0,
 }

@@ -1,3 +1,4 @@
+--!strict
 --[[
     Tools/verify/LuaTests/01-math-suite.luau
 

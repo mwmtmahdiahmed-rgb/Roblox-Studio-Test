@@ -1,3 +1,4 @@
+--!strict
 --[[
     Tools/verify/LuaTests/03-network-suite.luau
 

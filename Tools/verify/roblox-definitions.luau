@@ -1,3 +1,4 @@
+--!strict
 -- roblox-definitions.luau
 -- Partial hand-written Roblox API surface for the offline type checker.
 --

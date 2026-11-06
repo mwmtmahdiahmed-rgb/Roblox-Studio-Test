@@ -38,7 +38,7 @@ const SourceRoot = join(RepoRoot, "ROJO_OHIO_MUMBAI");
 const MockRoot = join(Here, "src");
 
 // Harness files, in dependency order.
-const MockFiles = ["01-mock-value-types.luau", "02-mock-services.luau", "03-env.luau", "00-runner.luau"];
+const MockFiles = ["01-mock-value-types.luau", "01b-mock-containers.luau", "02-mock-services.luau", "02b-mock-rig.luau", "03-env.luau", "03b-env-simulation.luau", "04-testkit.luau", "00-runner.luau"];
 
 const Args = process.argv.slice(2);
 const OnlyFilter = (Args.find((A) => A.startsWith("--only=")) || "").split("=")[1] || null;
@@ -293,13 +293,21 @@ function BootRuntime(lua) {
         name: `@verify/${FileName}`,
     });
 
-    const ValueTypes = LoadChunk("01-mock-value-types.luau").call().at(0);
+    const ValueTypesPartA = LoadChunk("01-mock-value-types.luau").call().at(0);
+    const ContainersFactory = LoadChunk("01b-mock-containers.luau").call().at(0);
+    const ValueTypes = ContainersFactory.call(ValueTypesPartA).at(0);
 
     const ServicesFactory = LoadChunk("02-mock-services.luau").call().at(0);
     const Services = ServicesFactory.call(ValueTypes).at(0);
 
+    const RigFactory = LoadChunk("02b-mock-rig.luau").call().at(0);
+    RigFactory.call(ValueTypes, Services.get("HumanoidClass"), Services.get("MockHelpers"));
+
     const EnvFactory = LoadChunk("03-env.luau").call().at(0);
     const EnvHandle = EnvFactory.call(ValueTypes, Services).at(0);
+
+    const SimulationFactory = LoadChunk("03b-env-simulation.luau").call().at(0);
+    SimulationFactory.call(EnvHandle);
 
     const KitFactory = LoadChunk("04-testkit.luau").call().at(0);
     const Kit = KitFactory.call(EnvHandle).at(0);
