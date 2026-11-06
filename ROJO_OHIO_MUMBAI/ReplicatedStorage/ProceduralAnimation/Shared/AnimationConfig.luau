@@ -1,3 +1,4 @@
+--!strict
 -- ProceduralAnimation/Shared/AnimationConfig
 -- Aggregator. [1]-[2] constants and clip authoring live in AnimationConfigData,
 -- [2.5]-[2.6] waves/fabrik/Gestures in AnimationConfigMotion, and the [3] compile

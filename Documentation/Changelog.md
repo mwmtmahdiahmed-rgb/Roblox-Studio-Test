@@ -196,6 +196,117 @@ an entry, add it in **both** places.
 - **Affected:** `ProceduralAnimator, ClientPosePipeline, CharacterMotionState, ClientRigKinematics, CharacterLifecycle, AnimationNetwork, ConfigData, MathCore`
 - **Reason:** Lint warnings from the enabled checker: re-bound pipeline thunks and constants nothing called, a self-assignment (`local Enum = Enum`), duplicate shadowing `Locomotion` pairs, unused service locals. The return annotation removes the last type error — the checker infers an unannotated parameter as `unknown` rather than `any`, poisoning the `Dot` product fed to `Acos(Clamp(...))`. Behaviour unchanged; packet layout and public API untouched.
 
+
+---
+
+## 1.0.6
+
+### Extracted the bootstrap lifecycle logic out of the StarterPlayer/ServerScriptService scripts into ModuleScripts that return lifecycle handles.
+
+- **Affected:** `Client/Bootstrap/ClientBootstrap, Server/Bootstrap/ServerBootstrap, ProceduralAnimationClient, ProceduralAnimationServer`
+- **Reason:** Scripts may not return values, and the verification harness and embedders need a real ModuleScript return for the destroy path. The starter scripts are now thin require wrappers; all lifecycle logic type-checks as a module and exposes `Destroy()`.
+
+### Migrated every script in the repository to `--!strict`.
+
+- **Affected:** `All files`
+- **Reason:** Phase 6. All 28 scripts declare `--!strict` as their first line; analysis reports 0 errors and 0 warnings (40 pre-existing definition gaps at engine boundaries remain, documented). Script-may-not-return-values is exactly what forced the bootstrap extraction. No behaviour change intended; all suites and the API baseline remain green.
+
+### Harness: bootstrap and lifecycle suites retargeted to the two extracted Bootstrap modules.
+
+- **Affected:** `Tools/verify/LuaTests/05-bootstrap-suite.luau, Tools/verify/LuaTests/07-lifecycle-suite.luau`
+- **Reason:** Source assertions pointed at the starter scripts, which no longer contain the lifecycle code. Assertions now read `ClientBootstrap.luau` / `ServerBootstrap.luau` by RojoPath.
+
+---
+
+## 1.0.7
+
+### StatePool.Compact early-outs when no removals are pending, via a PendingRemovals counter incremented by Remove.
+
+- **Affected:** `StatePool`
+- **Reason:** Phase 7. Steady-state frames paid an O(n) scan to compact nothing. Measured ~1021 ns → ~67 ns per Compact call on a full 16-state pool; Remove remains correct and the Destroy Remove-then-Clear path resets the counter.
+
+### ApplyPose root-joint write fast path: pure CFrameAngles when the vertical offset is below 0.0002.
+
+- **Affected:** `ClientPosePipeline`
+- **Reason:** Phase 7. Avoids composing `CFrame.new(0, y, 0) * angles` every frame for rigs with no vertical root motion. (Side effect: made explicit that `Motor6D.Transform` honours translation, contradicting the docs' earlier rotation-only claim; SyntaxReference §4 was corrected.)
+
+### FABRIK per-chain TargetScratch tables; FootRayDirection cached at state creation.
+
+- **Affected:** `ClientRigKinematics, CharacterLifecycle`
+- **Reason:** Phase 7. Two per-frame allocations removed from the hot loop. TargetScratch is created in the chain init; FootRayDirection caches the constant (0, -FootRayLength, 0) once per character.
+
+### Added Tools/verify/bench.mjs — a machine-dependent comparative micro-benchmark.
+
+- **Affected:** `Tools/verify/bench.mjs`
+- **Reason:** Phase 7. Numbers recorded in Memory.md; same-machine comparison only; proves nothing about runtime behaviour on a live rig.
+
+---
+
+## 1.1.0
+
+### Horizontal speed low-pass: the locomotion blend now uses an exponentially filtered speed.
+
+- **Affected:** `ConfigData, ClientPosePipeline, CharacterLifecycle`
+- **Reason:** `AssemblyLinearVelocity` jitters frame to frame, shimmering the idle/walk/run blend. `Config.VelocityFilterRate` (default 12.0/s) smooths it; `0` disables the filter (previous behaviour). Filtered value persisted on `State.FilteredSpeed`. New top-level config key; no existing config changed.
+
+### Spline arc-length lookup tables with constant-speed sampling.
+
+- **Affected:** `MathCurves, AnimationMath`
+- **Reason:** Keyframe animation needs constant-speed playback; equal time offsets over a non-uniform curve are not constant-speed. `CompileSpline` precomputes 64 chord segments along the (Time, Value) graph for all compile paths; new exports `MathLib.GetSplineLength` and `MathLib.SampleSplineAtDistance` (binary search, allocation-free). Empty/single-key splines report zero length safely.
+
+### Configurable damped springs (`MathLib.StepSpring`).
+
+- **Affected:** `MathCore, AnimationMath`
+- **Reason:** Springs drive the new squash & stretch and are available for consumer secondary motion. Semi-implicit Euler, stable for the shipped stiffness range at frame rates down to ~15 Hz; the one runtime caller clamps dt to 0.0667 s. Caller-owned state mutated in place — zero allocation.
+
+### Squash & stretch: landings kick a damped spring on the root vertical offset.
+
+- **Affected:** `CharacterMotionState, ClientPosePipeline, CharacterLifecycle, ConfigData`
+- **Reason:** Landings read as weighty. Impulse is fall-speed scaled (clamped 0.5–2.0×) and applied on the `FloorMaterial` landing poll, integrated in `ComputeRootOffset`. `Config.SquashStretch = { Enabled = true, Strength = 2.4, Stiffness = 170.0, Damping = 14.0 }`; disable to opt out. Rides the same root-offset path as the locomotion bob; no new pose write path.
+
+### Head look-at: `Animator.SetLookAtTarget(TargetPosition?, Weight?)` aims the Neck joint.
+
+- **Affected:** `ProceduralAnimator, ClientRigKinematics (ApplyLookAt), ClientPosePipeline, CharacterLifecycle, ConfigData`
+- **Reason:** Gaze-at-target is common avatar behaviour. Implemented as an additive yaw/pitch blend into the existing pose buffer, applied after IK and before ApplyPose, measured in the root part's frame (body-relative). `Config.LookAt = { Smoothing = 8.0 }` exponential approach; angle limits reuse `Config.IkAngleLimitMin/Max`. Pass `nil` to fade the aim out — no pops. Default weight 0; unused cost is one table read and an `Exp()` per frame.
+
+### Per-joint amplitude control: `Animator.SetJointAmplitude(JointIndexValue, Scale)`.
+
+- **Affected:** `ProceduralAnimator, ClientPosePipeline, CharacterLifecycle`
+- **Reason:** Scale any channel's desired angles (0 freezes influence, 1 neutral, 3 clamp) on top of clips, IK, waves, FABRIK and look-at alike — it applies at the pose buffer before smoothing. Preallocated 16-slot table; one read + compare per joint per frame when unset.
+
+### Version bump to 1.1.0: new top-level config keys only; packet layout and all pre-existing exports unchanged.
+
+- **Affected:** `ConfigData, Documentation/Changelog.md, Shared/Changelog.luau`
+- **Reason:** Minor release for Phase 8. The frozen API baseline (`Tools/verify/baseline/api.json`) permits added exports; nothing existing changed shape. 1.0.6/1.0.7 are changelog-only phases (no runtime Version bump).
+
+
+---
+
+## 1.1.1
+
+### Added `ProceduralAnimation.project.json` (Rojo 7 build) and `Tools/verify/rojo-check.mjs`; `.gitignore` covers build artifacts.
+
+- **Affected:** `ProceduralAnimation.project.json (new), Tools/verify/rojo-check.mjs (new), .gitignore, Documentation/Memory.md, Maintenance.md, Audit.md`
+- **Reason:** Closes audit item O3. The project file maps `ROJO_OHIO_MUMBAI/` onto the DataModel for placeId `139066482915692`; the two harness-suffixed starter entries force `$className LocalScript` / `Script` via tree keys, so the `.local`/`.legacy` harness conventions stay untouched. `rojo-check.mjs` statically enforces path existence, full coverage of the source tree, repository containment and the harness conventions (28/28 files mapped; negative cases verified). `rojo build` itself was not executed in this sandbox (Rojo release assets redirect to object storage the sandbox cannot reach); validate the build on a network that reaches GitHub releases before publishing. Framework code unchanged; `Config.Version` stays `1.1.0`.
+
+---
+
+## 1.1.2
+
+### Docs accuracy pass and CI: corrected examples, harness README, GitHub Actions gate.
+
+- **Affected:** `Documentation/GoodPractices.md, Documentation/BadPractices.md, Tools/verify/README.md (new), .github/workflows/verify.yml (new), Documentation/Maintenance.md, Documentation/Memory.md`
+- **Reason:** Keep the documentation as rigorous as the code after Phases 6–10 and the project-file work. GoodPractices: the `Compact` example now shows the Phase 7 `PendingRemovals` early-out and the PoseBuffer require path is correct; BadPractices: the config example cites keys that exist (`Locomotion.BlendRate`, `IkBlendRate`) and the "exports preserved" claim no longer cites a stale count. CI runs the same gate we run locally (`npm ci` + `verify.mjs` + `rojo-check.mjs`) on push/PR to `main` and `arena/**` so a regression cannot merge quietly. No framework code changed; `Config.Version` stays `1.1.0`.
+
+---
+
+## 1.1.3
+
+### `bench.mjs` extended: `GetSplineLength`, `SampleSplineAtDistance`, `StepSpring` measured.
+
+- **Affected:** `Tools/verify/bench.mjs, Documentation/Memory.md`
+- **Reason:** Phase 8 added public hot-path math without benchmark coverage (number inconsistency found during the docs-accuracy pass). `SampleSplineAtDistance` ≈ 1787 ns/op (~2.8× `SampleSpline` — the price of constant-speed sampling), `GetSplineLength` 136 ns/op (pure field read), `StepSpring` ≈ 373 ns/op. Machine-dependent, comparative only. Framework code unchanged; `Config.Version` stays `1.1.0`.
+
 ---
 
 ## Entry format

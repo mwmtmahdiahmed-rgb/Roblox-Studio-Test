@@ -1,6 +1,7 @@
+--!strict
 -- ProceduralAnimation/Shared/AnimationMathWaves
 
-return function(MathLib, Private)
+return function(MathLib: { [string]: any }, Private: { [string]: any }): ()
 local Pi = math.pi
 local TwoPi = Pi * 2.0
 local Sin = math.sin
@@ -11,7 +12,7 @@ local Floor = math.floor
 --=========================================================
 
 -- Hardcoded permutation table for value noise (256 entries, shuffled 0-255).
-local PermutationTable = {
+local PermutationTable: { number } = {
     151, 160, 137, 91, 90, 15, 131, 13, 201, 95, 96, 53, 194, 233, 7, 225,
     140, 36, 103, 30, 69, 142, 8, 99, 37, 240, 21, 10, 23, 190, 6, 148,
     247, 120, 234, 75, 0, 26, 197, 62, 94, 252, 219, 203, 117, 35, 11, 32,
@@ -30,11 +31,11 @@ local PermutationTable = {
     222, 114, 67, 29, 24, 72, 243, 141, 128, 195, 78, 66, 215, 61, 156, 180,
 }
 
-local function Fade(Value)
+local function Fade(Value: number): number
     return Value * Value * Value * (Value * (Value * 6.0 - 15.0) + 10.0)
 end
 
-local function Grad(Hash, X)
+local function Grad(Hash: number, X: number): number
     local H = Hash % 4
     if H == 0 then
         return X
@@ -48,7 +49,7 @@ local function Grad(Hash, X)
 end
 
 -- 1D value noise, returns a value in approximately [-1, 1].
-function MathLib.Noise1D(X)
+function MathLib.Noise1D(X: number): number
     local Xi = Floor(X)
     local Xf = X - Xi
     local U = Fade(Xf)
@@ -61,7 +62,7 @@ end
 
 -- Evaluates a wave definition at Time. Wave is a table with Harmonics (array of {Amplitude, Frequency, Phase})
 -- and optionally NoiseAmplitude, NoiseFrequency.
-function MathLib.SampleWave(Wave, Time)
+function MathLib.SampleWave(Wave: any, Time: number): number
     local Value = 0.0
     local Harmonics = Wave.Harmonics
     if Harmonics then
@@ -79,8 +80,8 @@ end
 
 -- Compiles a wave preset into a flat array for fast sampling. Returns a table with
 -- Harmonics as a flat array {Amp1, Freq1, Phase1, Amp2, Freq2, Phase2, ...} and noise params.
-function MathLib.CompileWave(Wave)
-    local Compiled = {
+function MathLib.CompileWave(Wave: any): any
+    local Compiled: any = {
         HarmonicCount = 0,
         Harmonics = {},
         NoiseAmplitude = Wave.NoiseAmplitude or 0.0,
@@ -101,7 +102,7 @@ function MathLib.CompileWave(Wave)
 end
 
 -- Fast wave sampler using pre-compiled flat array. No allocations.
-function MathLib.SampleCompiledWave(Compiled, Time)
+function MathLib.SampleCompiledWave(Compiled: any, Time: number): number
     local Value = 0.0
     local Harmonics = Compiled.Harmonics
     local Count = Compiled.HarmonicCount

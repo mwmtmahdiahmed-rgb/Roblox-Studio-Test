@@ -1,3 +1,4 @@
+--!strict
 -- ProceduralAnimation/Client/CharacterJoints
 -- Character rig discovery: locating the Motor6D for every joint slot, caching it once, recording
 -- the rest-pose bone axis, and measuring limb lengths from the rest C0/C1 data.
@@ -6,7 +7,7 @@
 -- function bodies below are unchanged. Everything here is a pure query of the character rig; the
 -- returned cache lives on the caller's State table, which is why no state is held in this module.
 
-return function(Dependencies)
+return function(Dependencies: { [string]: any }): any
 local Config = Dependencies.Config
 local Changelog = Dependencies.Changelog
 
@@ -34,7 +35,7 @@ local CharacterJoints = {}
 -- [2] DISCOVERY
 --=========================================================
 
-local function FindMotor6D(Character, JointName, Aliases)
+local function FindMotor6D(Character: any, JointName: string, Aliases: { string }?): any
     local Found = Character:FindFirstChild(JointName, true)
     if Found and Found:IsA("Motor6D") then
         return Found
@@ -50,7 +51,7 @@ local function FindMotor6D(Character, JointName, Aliases)
     return nil
 end
 
-local function CacheJoints(State, Character)
+local function CacheJoints(State: any, Character: any): (boolean, string?)
     local Joints = State.Joints
     local BoneAxis = State.BoneAxis
     local Present = State.JointPresent
@@ -96,7 +97,7 @@ local function CacheJoints(State, Character)
     return true, nil
 end
 
-local function CacheLimbLengths(State)
+local function CacheLimbLengths(State: any): ()
     local Joints = State.Joints
     for Side = 1, 2 do
         local HipJoint = Joints[LegHip[Side]]

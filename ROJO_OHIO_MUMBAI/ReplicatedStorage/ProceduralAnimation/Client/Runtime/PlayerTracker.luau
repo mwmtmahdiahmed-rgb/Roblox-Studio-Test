@@ -1,3 +1,4 @@
+--!strict
 -- ProceduralAnimation/Client/Runtime/PlayerTracker
 -- Player lifecycle tracking for the client runtime.
 --

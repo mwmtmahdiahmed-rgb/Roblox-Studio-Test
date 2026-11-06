@@ -1,6 +1,7 @@
+--!strict
 -- ProceduralAnimation/Shared/AnimationMathCore
 
-return function(MathLib, Private)
+return function(MathLib: { [string]: any }, Private: { [string]: any }): ()
 --=========================================================
 -- [1] CONSTANTS
 --=========================================================
@@ -22,11 +23,11 @@ local CFrameNew = CFrame.new
 MathLib.Pi = Pi
 MathLib.TwoPi = TwoPi
 
-local EasingFunctions = {}
+local EasingFunctions: { (number) -> number } = {}
 local EasingCount = 0
 local BezierCurves = Private.BezierCurves
 
-local function RegisterEasing(Function)
+local function RegisterEasing(Function: (number) -> number): ()
     EasingCount += 1
     EasingFunctions[EasingCount] = Function
 end
@@ -35,18 +36,18 @@ end
 -- [2] EASING (built-in Enum.EasingStyle equivalents, reimplemented)
 --=========================================================
 
-RegisterEasing(function(Alpha)
+RegisterEasing(function(Alpha: number): number
     return Alpha
 end)
 
 -- Sine
-RegisterEasing(function(Alpha)
+RegisterEasing(function(Alpha: number): number
     return 1.0 - Cos(Alpha * Pi * 0.5)
 end)
-RegisterEasing(function(Alpha)
+RegisterEasing(function(Alpha: number): number
     return Sin(Alpha * Pi * 0.5)
 end)
-RegisterEasing(function(Alpha)
+RegisterEasing(function(Alpha: number): number
     return -(Cos(Pi * Alpha) - 1.0) * 0.5
 end)
 
@@ -54,14 +55,14 @@ end)
 local BackConstant = 1.70158
 local BackConstantInOut = BackConstant * 1.525
 
-RegisterEasing(function(Alpha)
+RegisterEasing(function(Alpha: number): number
     return Alpha * Alpha * ((BackConstant + 1.0) * Alpha - BackConstant)
 end)
-RegisterEasing(function(Alpha)
+RegisterEasing(function(Alpha: number): number
     local Shifted = Alpha - 1.0
     return Shifted * Shifted * ((BackConstant + 1.0) * Shifted + BackConstant) + 1.0
 end)
-RegisterEasing(function(Alpha)
+RegisterEasing(function(Alpha: number): number
     if Alpha < 0.5 then
         local Doubled = Alpha * 2.0
         return 0.5 * (Doubled * Doubled * ((BackConstantInOut + 1.0) * Doubled - BackConstantInOut))
@@ -71,13 +72,13 @@ RegisterEasing(function(Alpha)
 end)
 
 -- Quad
-RegisterEasing(function(Alpha)
+RegisterEasing(function(Alpha: number): number
     return Alpha * Alpha
 end)
-RegisterEasing(function(Alpha)
+RegisterEasing(function(Alpha: number): number
     return 1.0 - (1.0 - Alpha) * (1.0 - Alpha)
 end)
-RegisterEasing(function(Alpha)
+RegisterEasing(function(Alpha: number): number
     if Alpha < 0.5 then
         return 2.0 * Alpha * Alpha
     end
@@ -86,14 +87,14 @@ RegisterEasing(function(Alpha)
 end)
 
 -- Quart
-RegisterEasing(function(Alpha)
+RegisterEasing(function(Alpha: number): number
     return Alpha * Alpha * Alpha * Alpha
 end)
-RegisterEasing(function(Alpha)
+RegisterEasing(function(Alpha: number): number
     local Shifted = 1.0 - Alpha
     return 1.0 - Shifted * Shifted * Shifted * Shifted
 end)
-RegisterEasing(function(Alpha)
+RegisterEasing(function(Alpha: number): number
     if Alpha < 0.5 then
         return 8.0 * Alpha * Alpha * Alpha * Alpha
     end
@@ -102,14 +103,14 @@ RegisterEasing(function(Alpha)
 end)
 
 -- Quint
-RegisterEasing(function(Alpha)
+RegisterEasing(function(Alpha: number): number
     return Alpha * Alpha * Alpha * Alpha * Alpha
 end)
-RegisterEasing(function(Alpha)
+RegisterEasing(function(Alpha: number): number
     local Shifted = 1.0 - Alpha
     return 1.0 - Shifted * Shifted * Shifted * Shifted * Shifted
 end)
-RegisterEasing(function(Alpha)
+RegisterEasing(function(Alpha: number): number
     if Alpha < 0.5 then
         return 16.0 * Alpha * Alpha * Alpha * Alpha * Alpha
     end
@@ -118,7 +119,7 @@ RegisterEasing(function(Alpha)
 end)
 
 -- Bounce
-local function BounceOut(Alpha)
+local function BounceOut(Alpha: number): number
     local A = Alpha
     if A < 1.0 / 2.75 then
         return 7.5625 * A * A
@@ -133,11 +134,11 @@ local function BounceOut(Alpha)
     return 7.5625 * A * A + 0.984375
 end
 
-RegisterEasing(function(Alpha)
+RegisterEasing(function(Alpha: number): number
     return 1.0 - BounceOut(1.0 - Alpha)
 end)
 RegisterEasing(BounceOut)
-RegisterEasing(function(Alpha)
+RegisterEasing(function(Alpha: number): number
     if Alpha < 0.5 then
         return (1.0 - BounceOut(1.0 - Alpha * 2.0)) * 0.5
     end
@@ -145,7 +146,7 @@ RegisterEasing(function(Alpha)
 end)
 
 -- Elastic
-RegisterEasing(function(Alpha)
+RegisterEasing(function(Alpha: number): number
     if Alpha == 0.0 then
         return 0.0
     elseif Alpha == 1.0 then
@@ -153,7 +154,7 @@ RegisterEasing(function(Alpha)
     end
     return -Pow(2.0, 10.0 * Alpha - 10.0) * Sin((Alpha * 10.0 - 10.75) * TwoPi / 3.0)
 end)
-RegisterEasing(function(Alpha)
+RegisterEasing(function(Alpha: number): number
     if Alpha == 0.0 then
         return 0.0
     elseif Alpha == 1.0 then
@@ -161,7 +162,7 @@ RegisterEasing(function(Alpha)
     end
     return Pow(2.0, -10.0 * Alpha) * Sin((Alpha * 10.0 - 0.75) * TwoPi / 3.0) + 1.0
 end)
-RegisterEasing(function(Alpha)
+RegisterEasing(function(Alpha: number): number
     if Alpha == 0.0 then
         return 0.0
     elseif Alpha == 1.0 then
@@ -174,19 +175,19 @@ RegisterEasing(function(Alpha)
 end)
 
 -- Exponential
-RegisterEasing(function(Alpha)
+RegisterEasing(function(Alpha: number): number
     if Alpha == 0.0 then
         return 0.0
     end
     return Pow(2.0, 10.0 * Alpha - 10.0)
 end)
-RegisterEasing(function(Alpha)
+RegisterEasing(function(Alpha: number): number
     if Alpha == 1.0 then
         return 1.0
     end
     return 1.0 - Pow(2.0, -10.0 * Alpha)
 end)
-RegisterEasing(function(Alpha)
+RegisterEasing(function(Alpha: number): number
     if Alpha == 0.0 then
         return 0.0
     elseif Alpha == 1.0 then
@@ -199,14 +200,14 @@ RegisterEasing(function(Alpha)
 end)
 
 -- Circular
-RegisterEasing(function(Alpha)
+RegisterEasing(function(Alpha: number): number
     return 1.0 - Sqrt(1.0 - Alpha * Alpha)
 end)
-RegisterEasing(function(Alpha)
+RegisterEasing(function(Alpha: number): number
     local Shifted = Alpha - 1.0
     return Sqrt(1.0 - Shifted * Shifted)
 end)
-RegisterEasing(function(Alpha)
+RegisterEasing(function(Alpha: number): number
     if Alpha < 0.5 then
         return (1.0 - Sqrt(1.0 - 4.0 * Alpha * Alpha)) * 0.5
     end
@@ -215,14 +216,14 @@ RegisterEasing(function(Alpha)
 end)
 
 -- Cubic
-RegisterEasing(function(Alpha)
+RegisterEasing(function(Alpha: number): number
     return Alpha * Alpha * Alpha
 end)
-RegisterEasing(function(Alpha)
+RegisterEasing(function(Alpha: number): number
     local Shifted = 1.0 - Alpha
     return 1.0 - Shifted * Shifted * Shifted
 end)
-RegisterEasing(function(Alpha)
+RegisterEasing(function(Alpha: number): number
     if Alpha < 0.5 then
         return 4.0 * Alpha * Alpha * Alpha
     end
@@ -231,7 +232,7 @@ RegisterEasing(function(Alpha)
 end)
 
 -- Custom Spring: damped harmonic, lands exactly on 1.
-RegisterEasing(function(Alpha)
+RegisterEasing(function(Alpha: number): number
     if Alpha <= 0.0 then
         return 0.0
     elseif Alpha >= 1.0 then
@@ -241,7 +242,7 @@ RegisterEasing(function(Alpha)
 end)
 
 -- Custom Elastic: heavier overshoot than the enum version.
-RegisterEasing(function(Alpha)
+RegisterEasing(function(Alpha: number): number
     if Alpha <= 0.0 then
         return 0.0
     elseif Alpha >= 1.0 then
@@ -251,7 +252,7 @@ RegisterEasing(function(Alpha)
 end)
 
 -- Custom Bounce: six decaying hops.
-RegisterEasing(function(Alpha)
+RegisterEasing(function(Alpha: number): number
     if Alpha <= 0.0 then
         return 0.0
     elseif Alpha >= 1.0 then
@@ -267,7 +268,7 @@ RegisterEasing(function(Alpha)
 end)
 
 -- Custom Anticipate-Overshoot: pulls back before travelling, overshoots on arrival.
-RegisterEasing(function(Alpha)
+RegisterEasing(function(Alpha: number): number
     local Tension = 2.5
     if Alpha < 0.5 then
         local Doubled = Alpha * 2.0
@@ -284,7 +285,7 @@ MathLib.EasingCount = EasingCount
 -- [3] MATH
 --=========================================================
 
-function MathLib.Ease(EasingId, Alpha)
+function MathLib.Ease(EasingId: number, Alpha: number): number
     local Function = EasingFunctions[EasingId]
     if Function then
         return Function(Alpha)
@@ -300,7 +301,7 @@ return MathLib.BezierQuadratic(Curve.P0, Curve.P1, Curve.P2, Alpha)
     return Alpha
 end
 
-function MathLib.Clamp01(Value)
+function MathLib.Clamp01(Value: number): number
     if Value < 0.0 then
         return 0.0
     elseif Value > 1.0 then
@@ -309,12 +310,29 @@ function MathLib.Clamp01(Value)
     return Value
 end
 
-function MathLib.SmoothFactor(Rate, DeltaTime)
+function MathLib.SmoothFactor(Rate: number, DeltaTime: number): number
     -- Frame-rate independent exponential smoothing.
     return 1.0 - Exp(-Rate * DeltaTime)
 end
 
-function MathLib.ShortestAngle(From, To)
+-- Damped harmonic oscillator with configurable stiffness and damping, integrated with
+-- semi-implicit Euler (stable for the stiffness values used here). State is a plain table
+-- { Position = number, Velocity = number } owned by the caller; it is mutated in place, so the
+-- per-frame cost is zero allocation. Stiffness is the spring constant (higher = faster), Damping
+-- is the viscous coefficient (higher = less overshoot). Landing exactly on Target is NOT
+-- guaranteed; use Clamp01-style easing when exact endpoints matter.
+function MathLib.StepSpring(State: any, Target: number, Stiffness: number, Damping: number, DeltaTime: number): number
+    local Position = State.Position
+    local Velocity = State.Velocity
+    local Acceleration = Stiffness * (Target - Position) - Damping * Velocity
+    Velocity += Acceleration * DeltaTime
+    Position += Velocity * DeltaTime
+    State.Position = Position
+    State.Velocity = Velocity
+    return Position
+end
+
+function MathLib.ShortestAngle(From: number, To: number): number
     local Difference = To - From
     while Difference > Pi do
         Difference -= TwoPi
@@ -329,11 +347,11 @@ end
 -- [4] LERPING
 --=========================================================
 
-function MathLib.LerpNumber(From, To, Alpha)
+function MathLib.LerpNumber(From: number, To: number, Alpha: number): number
     return From + (To - From) * Alpha
 end
 
-function MathLib.LerpVector3(From, To, Alpha)
+function MathLib.LerpVector3(From: any, To: any, Alpha: number): any
     local FromX, FromY, FromZ = From.X, From.Y, From.Z
     local ToX, ToY, ToZ = To.X, To.Y, To.Z
     return Vector3New(
@@ -343,7 +361,7 @@ function MathLib.LerpVector3(From, To, Alpha)
     )
 end
 
-local function QuaternionFromCFrame(CFrame): (number, number, number, number)
+local function QuaternionFromCFrame(CFrame: any): (number, number, number, number)
     local Right = CFrame.XVector
     local Up = CFrame.YVector
     local Back = CFrame.ZVector
@@ -365,7 +383,7 @@ local function QuaternionFromCFrame(CFrame): (number, number, number, number)
     return (M10 - M01) / Scale, (M02 + M20) / Scale, (M12 + M21) / Scale, 0.25 * Scale
 end
 
-local function CFrameFromQuaternion(PositionX, PositionY, PositionZ, QW, QX, QY, QZ)
+local function CFrameFromQuaternion(PositionX: number, PositionY: number, PositionZ: number, QW: number, QX: number, QY: number, QZ: number): any
     local XX, YY, ZZ = QX * QX, QY * QY, QZ * QZ
     local XY, XZ, YZ = QX * QY, QX * QZ, QY * QZ
     local WX, WY, WZ = QW * QX, QW * QY, QW * QZ
@@ -386,7 +404,7 @@ local function CFrameFromQuaternion(PositionX, PositionY, PositionZ, QW, QX, QY,
     )
 end
 
-function MathLib.SlerpCFrame(From, To, Alpha)
+function MathLib.SlerpCFrame(From: any, To: any, Alpha: number): any
     if Alpha <= 0.0 then
         return From
     elseif Alpha >= 1.0 then
@@ -442,7 +460,7 @@ function MathLib.SlerpCFrame(From, To, Alpha)
     return CFrameFromQuaternion(PositionX, PositionY, PositionZ, ResultW, ResultX, ResultY, ResultZ)
 end
 
-function MathLib.LerpCFrame(From, To, Alpha)
+function MathLib.LerpCFrame(From: any, To: any, Alpha: number): any
     if Alpha <= 0.0 then
         return From
     elseif Alpha >= 1.0 then

@@ -1,3 +1,4 @@
+--!strict
 -- ProceduralAnimation/Shared/AnimationConfigData
 
 return function(Config, Private)
@@ -6,7 +7,7 @@ return function(Config, Private)
 -- [1] CONSTANTS
 --=========================================================
 
-Config.Version = "1.0.0"
+Config.Version = "1.1.0"
 
 Config.MaxJoints = 16
 Config.MaxGestures = 4
@@ -38,6 +39,27 @@ Config.Locomotion = {
     WalkMax = 9.0,
     RunMax = 22.0,
     BlendRate = 9.0,
+}
+
+-- Exponential low-pass cutoff (per second) applied to AssemblyLinearVelocity horizontal speed
+-- before it drives the idle/walk/run blend. 0 disables the filter (raw velocity, the original
+-- behaviour). New top-level keys only: existing config sub-tables are untouched.
+Config.VelocityFilterRate = 12.0
+
+-- Squash and stretch: a landing impulse is fed into a damped spring on the root vertical
+-- offset, so landings dip and rebound slightly. Set Enabled = false to opt out entirely.
+Config.SquashStretch = {
+    Enabled = true,
+    Strength = 2.4,
+    Stiffness = 170.0,
+    Damping = 14.0,
+}
+
+-- Head look-at: Neck joint aims toward a target set via Animator.SetLookAtTarget.
+-- Smoothing is the exponential rate at which the head weight approaches its target; angle
+-- limits reuse Config.IkAngleLimitMin/Max. Absent a target, this costs one table read per frame.
+Config.LookAt = {
+    Smoothing = 8.0,
 }
 
 -- Joint index constants. Integer keys only, so every joint lookup in the hot loop is numeric.

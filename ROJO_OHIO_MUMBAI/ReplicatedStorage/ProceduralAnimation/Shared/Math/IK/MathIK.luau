@@ -1,6 +1,7 @@
+--!strict
 -- ProceduralAnimation/Shared/AnimationMathIk
 
-return function(MathLib, Private)
+return function(MathLib: { [string]: any }, Private: { [string]: any }): ()
 local Sqrt = math.sqrt
 local Vector3New = Vector3.new
 
@@ -11,7 +12,7 @@ local Vector3New = Vector3.new
 -- ChainPositions[1] is the root (fixed), ChainPositions[N+1] is the end effector.
 -- Lengths[i] is the length of bone i (from joint i to joint i+1).
 -- Tolerance is the acceptable error in studs. MaxIterations caps the solve.
-function MathLib.SolveFabrik(ChainPositions, Lengths, TargetPosition, Tolerance, MaxIterations)
+function MathLib.SolveFabrik(ChainPositions: { any }, Lengths: { number }, TargetPosition: any, Tolerance: number, MaxIterations: number): ()
     local BoneCount = #Lengths
     if BoneCount == 0 then
         return

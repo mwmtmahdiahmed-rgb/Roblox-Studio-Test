@@ -1,3 +1,4 @@
+--!strict
 -- ProceduralAnimation/Client/CharacterLifecycle
 -- Bringing a character up and taking it down again:
 --   * CreateState builds the per-character state table, pre-allocating every buffer and table the
@@ -9,7 +10,7 @@
 -- Split out of ProceduralAnimator to respect the 500-line limit; bodies are unchanged apart from
 -- routing the registry through StatePool, so the heartbeat can iterate the same list.
 
-return function(Dependencies)
+return function(Dependencies: { [string]: any }): any
 local Config = Dependencies.Config
 local Changelog = Dependencies.Changelog
 local Players = Dependencies.Players
@@ -49,8 +50,8 @@ local Lifecycle = {}
 -- [2] LIFECYCLE
 --=========================================================
 
-local function CreateState(Character, IsLocal)
-    local State = {
+local function CreateState(Character: any, IsLocal: boolean): any
+    local State: any = {
         Character = Character,
         Humanoid = Character:FindFirstChildOfClass("Humanoid"),
         RootPart = Character:FindFirstChild("HumanoidRootPart"),
@@ -72,11 +73,21 @@ local function CreateState(Character, IsLocal)
         IdlePhase = 0.0,
         WalkPhase = 0.0,
         RunPhase = 0.0,
+        FilteredSpeed = 0.0,
+        LookAtTarget = nil,
+        LookAtWeight = 0.0,
+        LookAtTargetWeight = 0.0,
+        -- Per-joint amplitude multipliers (1.0 default). Preallocated length MaxJoints so the
+        -- hot loop never grows the table.
+        JointAmplitude = { 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 },
         IdleWeight = 1.0,
         WalkWeight = 0.0,
         RunWeight = 0.0,
         LocomotionWeight = 1.0,
         Speed = 0.0,
+
+        -- Constant downward ray used by foot raycasting; created once instead of per frame.
+        FootRayDirection = Vector3New(0.0, -Config.FootRayLength, 0.0),
 
         JumpState = JumpStateGrounded,
         JumpTime = 0.0,
@@ -84,6 +95,9 @@ local function CreateState(Character, IsLocal)
         JumpOffset = 0.0,
 
         RootOffsetY = 0.0,
+        -- Damped-spring squash & stretch: impulse below in CharacterMotionState kicks Velocity
+        -- negative on landing; integrated each frame in ClientPosePipeline.ComputeRootOffset.
+        SquashSpring = { Position = 0.0, Velocity = 0.0 },
 
         Sequence = 0,
         SendAccumulator = 0.0,
@@ -109,6 +123,7 @@ local function CreateState(Character, IsLocal)
             Positions = table.create(JointCount),
             Lengths = table.create(JointCount - 1),
             LengthsReady = false,
+            TargetScratch = { X = 0.0, Y = 0.0, Z = 0.0 },
         }
         for Index = 1, JointCount do
             State.FabrikChains[ChainDef].Positions[Index] = Vector3New(0.0, 0.0, 0.0)
@@ -133,7 +148,7 @@ local function CreateState(Character, IsLocal)
     return State
 end
 
-local function OnHumanoidStateChanged(State, OldState, NewState)
+local function OnHumanoidStateChanged(State: any, OldState: any, NewState: any): ()
     if not State.Valid or not State.IsLocal then
         return
     end
@@ -157,7 +172,7 @@ local function OnHumanoidStateChanged(State, OldState, NewState)
     end
 end
 
-local function SetupCharacter(Character)
+local function SetupCharacter(Character: any): boolean
     if not Character or not Character:IsA("Model") then
         return false
     end
@@ -226,7 +241,7 @@ local function SetupCharacter(Character)
     return true
 end
 
-local function TeardownCharacter(Character)
+local function TeardownCharacter(Character: any): boolean
     local State = StatePool.Remove(Character)
     if not State then
         return false

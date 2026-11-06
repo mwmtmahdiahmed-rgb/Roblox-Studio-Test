@@ -1,3 +1,4 @@
+--!strict
 -- ProceduralAnimation/Shared/Utilities/Connections
 -- A tiny, allocation-free-by-default connection tracker.
 --

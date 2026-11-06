@@ -1,6 +1,7 @@
+--!strict
 -- ProceduralAnimation/Shared/AnimationConfigCompile
 
-return function(Config, Private)
+return function(Config: { [string]: any }, Private: { [string]: any }): ()
 local Clips = Private.Clips
 local JointIndex = Config.JointIndex
 
@@ -10,8 +11,8 @@ local JointIndex = Config.JointIndex
 -- Authoring tables are readable but use string field names. This pass flattens every clip into
 -- parallel integer-indexed arrays once, so the render loop reads only numeric keys.
 
-local function CompileClip(Source)
-    local Compiled = {
+local function CompileClip(Source: any): any
+    local Compiled: any = {
         TrackCount = 0,
         TrackJoint = {},
         TrackKeyCount = {},

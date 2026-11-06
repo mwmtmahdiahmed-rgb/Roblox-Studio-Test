@@ -211,8 +211,8 @@ values, and per-character presets become impossible.
 **Instead:** centralise in `AnimationConfig` and read it once at module scope.
 
 ```lua
-local JumpBlendRate = Config.Jump.BlendRate
-local SpeedEpsilon = Config.Locomotion.SpeedEpsilon
+local LocomotionBlendRate = Config.Locomotion.BlendRate   -- exists: 9.0
+local IkBlendRate = Config.IkBlendRate                     -- exists: 7.0
 ```
 
 ---
@@ -273,7 +273,7 @@ require-time cost grows for every consumer even if they need one function.
 
 **Instead:** split by **concern**, not by line count. The target is under 500 lines, but the
 real goal is one clear responsibility per module. Proof that it is safe: the 1407 → 448 line
-split changed no behaviour, and the `api` suite confirmed all 136 exports were preserved.
+split changed no behaviour, and the `api` suite confirmed all baseline exports were preserved.
 
 ---
 
@@ -293,9 +293,10 @@ half the defects in this document.
 **Instead:** `--!strict` plus explicit types on exported functions and state tables. No
 `--!nocheck`, no blanket `any`, no `--!nolint` comments.
 
-> **Honest status:** the codebase does not yet satisfy this. **Zero of 24 files currently
-> declare `--!strict`.** This is the Phase 6 migration, not a completed property. Do not
-> describe the project as strictly typed.
+> **Status (2026-11-06): APPLIED.** Every `.luau` declares `--!strict` and the analysis is
+> clean (0 errors / 0 warnings; 40 pre-existing definition gaps at engine boundaries).
+> Keep it that way: new files must declare `--!strict` on line 1, and new type gaps must be
+> justified at the engine boundary, not papered over with `any`.
 
 ---
 

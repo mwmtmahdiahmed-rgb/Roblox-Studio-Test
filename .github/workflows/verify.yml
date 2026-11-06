@@ -1,0 +1,37 @@
+name: Verify
+
+# The offline harness is the only test signal this repository has (play mode is prohibited
+# in this project). Every push and pull request must stay green:
+#   - node verify.mjs      : compile + --!strict analysis + runtime suites + API baseline
+#   - node rojo-check.mjs  : ProceduralAnimation.project.json maps every source file
+# No secrets, no services, no deploy step.
+
+on:
+  push:
+    branches:
+      - main
+      - "arena/**"
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    name: Harness gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install harness dependencies
+        run: npm ci --prefix Tools/verify
+
+      - name: Run the verification gate
+        run: node Tools/verify/verify.mjs
+
+      - name: Check the Rojo project file
+        run: node Tools/verify/rojo-check.mjs

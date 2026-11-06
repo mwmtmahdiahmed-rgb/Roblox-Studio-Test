@@ -35,8 +35,11 @@ Rules of thumb used here:
 - Use `() ` as an explicit empty return type; `: ()` documents "returns nothing".
 - Prefer narrowing over `any`. `--!strict` with a cast to `any` is `--!nonstrict` in disguise.
 
-> **Project status: NOT YET APPLIED.** No file currently declares `--!strict`. This is the
-> Phase 6 migration. The syntax above is correct Luau; the codebase does not use it yet.
+> **Project status: APPLIED (Phase 6, 2026-11-06).** Every `.luau` in the repository declares
+> `--!strict` as its first line, and the type checker reports 0 errors / 0 warnings (40
+> pre-existing definition gaps at engine boundaries). Note that under `--!strict` a script may
+> not return a value, which is why the bootstrappers are ModuleScripts required by thin
+> starter scripts rather than scripts themselves.
 
 ---
 
@@ -114,12 +117,15 @@ suite, which asserts these exact offsets.
 
 ---
 
-## 4. `Motor6D.Transform` — rotation only
+## 4. `Motor6D.Transform` — full CFrame, not just rotation
 
-**This is the single most misunderstood API in the project. VERIFIED.**
+**This section was corrected on 2026-11-06 after the ApplyPose root-offset fast path made the
+translation behaviour explicit. The earlier "rotation only" claim was wrong.**
 
-`Motor6D.Transform` applies an additional rotation on top of `C0`/`C1`. It carries **no
-translation** — position belongs to `C0`.
+`Motor6D.Transform` applies an additional **CFrame** on top of `C0`/`C1`. That CFrame carries
+BOTH a rotation and a translation, and both are honoured by the motor. A vertical bob written
+as a translation into `Transform` visibly raises and lowers the joint, which is exactly how the
+root squash/stretch path works.
 
 ```lua
 -- Correct: write euler angles
@@ -129,8 +135,10 @@ Motor.Transform = CFrame.fromEulerAnglesXYZ(X, Y, Z)
 local X, Y, Z = Motor.Transform:ToEulerAnglesXYZ()
 ```
 
-- `Motor.Transform.Position` is `(0, 0, 0)` **even when animation is working**. This is
-  expected. Never treat it as a failure signal.
+- `Motor.Transform.Position` is whatever the writer last put there — the framework's
+  ApplyPose writes `(0, 0, 0)` for ordinary joints (pure `CFrame.fromEulerAnglesXYZ`) and
+  `(0, RootOffsetY, 0)` for the root joint when a vertical offset is live. Both are expected.
+  Measuring the root joint's `Transform.Position.Y` is a valid way to observe squash/stretch.
 - `ToEulerAnglesXYZ()` returns **three** values. Capturing it into one variable silently
   discards two, and passing it directly to `string.format` raises
   `missing argument #3`. Capture into locals first.

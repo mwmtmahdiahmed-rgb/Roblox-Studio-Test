@@ -1,3 +1,4 @@
+--!strict
 -- ProceduralAnimation/Shared/AnimationNetwork
 -- Owns every remote, the bindable event bus and the server relay for pose packets.
 -- UnreliableRemoteEvent: per-frame pose packets.
@@ -23,8 +24,8 @@ local Changelog = require(script.Parent.Changelog)
 local Connections = require(script.Parent.Utilities.Connections)
 local Constants = require(script.Parent.Networking.Constants.NetworkConstants)
 
-local Network = {}
-local Private = {}
+local Network: { [string]: any } = {}
+local Private: { [string]: any } = {}
 
 -- The receive module writes HasRemotePose, SampleRemotePose and ReleaseRemotePose
 -- straight onto Network and returns OnClientPose through Private.
@@ -76,30 +77,30 @@ local ReadClampedI16 = Constants.ReadClampedI16
 local SendBuffer = BufferCreate(SendBufferSize)
 
 -- Server relay bookkeeping. Array-indexed player list, swap-removed on leave.
-local ServerPlayerStates = {}
+local ServerPlayerStates: { [any]: any } = {}
 local ServerPlayerCount = 0
-local ServerPlayerList = {}
+local ServerPlayerList: { [number]: any } = {}
 
 local Initialized = false
 local Shutdown = false
-local PoseRemote = nil
-local EventRemote = nil
+local PoseRemote: any = nil
+local EventRemote: any = nil
 
 -- Every engine connection this module makes is recorded here so Shutdown can release it all.
 local ConnectionTracker = Connections.New()
-local BusEvent = nil
-local RemotesFolder = nil
+local BusEvent: any = nil
+local RemotesFolder: any = nil
 
 --=========================================================
 -- [3] EVENT BUS (local, same side)
 --=========================================================
 
-local BusListeners = {}
+local BusListeners: { [number]: { (any) -> () } } = {}
 for EventId = 1, Config.MaxEventId do
     BusListeners[EventId] = {}
 end
 
-local function FireBus(EventId, Value)
+local function FireBus(EventId: number, Value: any): ()
     if BusEvent then
         BusEvent:Fire(EventId, Value)
     end
@@ -112,7 +113,7 @@ local function FireBus(EventId, Value)
 end
 Network.FireBus = FireBus
 
-function Network.BindLocal(EventId, Callback)
+function Network.BindLocal(EventId: number, Callback: (any) -> ()): ()
     local List = BusListeners[EventId]
     if not List then
         Changelog.Log("BindLocal: unknown event id " .. tostring(EventId))
@@ -125,7 +126,7 @@ end
 -- [5] REMOTE RESOLUTION
 --=========================================================
 
-local function ResolveRemotes()
+local function ResolveRemotes(): boolean
     local Root = ReplicatedStorage:FindFirstChild("ProceduralAnimation")
     if not Root and IsClient then
         Root = ReplicatedStorage:WaitForChild("ProceduralAnimation", 15)
@@ -147,7 +148,7 @@ local function ResolveRemotes()
     return RemotesFolder ~= nil
 end
 
-local function EnsureRemote(ClassName, Name)
+local function EnsureRemote(ClassName: string, Name: string): any
     local Existing = RemotesFolder:FindFirstChild(Name)
     if Existing then
         return Existing
@@ -162,7 +163,7 @@ end
 -- [6] SEND PATH (client)
 --=========================================================
 
-function Network.SendPose(Sequence, TickMilliseconds, RootPosition, RootVelocity, PoseBuffer, JointCount)
+function Network.SendPose(Sequence: number, TickMilliseconds: number, RootPosition: any, RootVelocity: any, PoseBuffer: buffer, JointCount: number): ()
     if not PoseRemote then
         return
     end
@@ -196,7 +197,7 @@ function Network.SendPose(Sequence, TickMilliseconds, RootPosition, RootVelocity
     PoseRemote:FireServer(Packet)
 end
 
-function Network.SendEvent(EventId, Value)
+function Network.SendEvent(EventId: number, Value: number): ()
     if not EventRemote then
         return
     end
@@ -207,7 +208,7 @@ end
 -- [7] SERVER RELAY + VALIDATION
 --=========================================================
 
-local function RegisterPlayerInternal(Player)
+local function RegisterPlayerInternal(Player: any): ()
     if ServerPlayerStates[Player] then
         return
     end
@@ -222,14 +223,14 @@ local function RegisterPlayerInternal(Player)
     ServerPlayerList[ServerPlayerCount] = Player
 end
 
-function Network.RegisterPlayer(Player)
+function Network.RegisterPlayer(Player: any): ()
     if not IsServer then
         return
     end
     RegisterPlayerInternal(Player)
 end
 
-function Network.UnregisterPlayer(Player)
+function Network.UnregisterPlayer(Player: any): ()
     if not IsServer then
         return
     end
@@ -247,7 +248,7 @@ function Network.UnregisterPlayer(Player)
     end
 end
 
-local function ValidateAngles(Packet, JointCount)
+local function ValidateAngles(Packet: buffer, JointCount: number): boolean
     for Joint = 1, JointCount do
         local Offset = JointDataOffset + (Joint - 1) * BytesPerJoint
         local X = BufferReadI16(Packet, Offset) * AngleDequantization
@@ -263,7 +264,7 @@ local function ValidateAngles(Packet, JointCount)
     return true
 end
 
-local function RelayPose(SourcePlayer, Packet)
+local function RelayPose(SourcePlayer: any, Packet: buffer): ()
     for Index = 1, ServerPlayerCount do
         local Other = ServerPlayerList[Index]
         if Other ~= SourcePlayer then
@@ -272,7 +273,7 @@ local function RelayPose(SourcePlayer, Packet)
     end
 end
 
-local function OnServerPose(Player, Packet)
+local function OnServerPose(Player: any, Packet: any): ()
     if TypeOf(Packet) ~= "buffer" then
         return
     end
@@ -348,7 +349,7 @@ local function OnServerPose(Player, Packet)
     RelayPose(Player, Packet)
 end
 
-local function OnServerEvent(Player, EventId, Value)
+local function OnServerEvent(Player: any, EventId: any, Value: any): ()
     if TypeOf(EventId) ~= "number" then
         return
     end
@@ -370,7 +371,7 @@ end
 -- [9] INIT
 --=========================================================
 
-local function ConnectServer()
+local function ConnectServer(): ()
     PoseRemote = EnsureRemote("UnreliableRemoteEvent", "PoseRemote")
     EventRemote = EnsureRemote("RemoteEvent", "EventRemote")
     BusEvent = EnsureRemote("BindableEvent", "AnimationBus")
@@ -384,7 +385,7 @@ local function ConnectServer()
     end
 end
 
-local function ConnectClient()
+local function ConnectClient(): boolean
     PoseRemote = RemotesFolder:WaitForChild("PoseRemote", 15)
     EventRemote = RemotesFolder:WaitForChild("EventRemote", 15)
     if not PoseRemote or not EventRemote then
@@ -410,7 +411,7 @@ local function ConnectClient()
     return true
 end
 
-function Network.Init()
+function Network.Init(): ()
     if Initialized then
         return
     end
@@ -440,14 +441,14 @@ function Network.Init()
     Initialized = true
 end
 
-function Network.IsReady()
+function Network.IsReady(): boolean
     return Initialized and not Shutdown
 end
 
 -- Releases every engine connection and returns the module to an inert state. Safe to call twice.
 -- Deliberately does not destroy the remotes: they are created once and shared, and destroying
 -- them would break a subsequent re-Init on the other side of the session.
-function Network.Shutdown()
+function Network.Shutdown(): ()
     if Shutdown then
         return
     end

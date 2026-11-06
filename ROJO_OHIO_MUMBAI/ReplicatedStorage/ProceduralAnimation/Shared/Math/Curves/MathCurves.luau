@@ -1,22 +1,96 @@
+--!strict
 -- ProceduralAnimation/Shared/AnimationMathCurves
 
-return function(MathLib, Private)
+return function(MathLib: { [string]: any }, Private: { [string]: any }): ()
 
 
 local EasingCount = MathLib.EasingCount
 local BezierCurves = Private.BezierCurves
 local BezierCurveCount = 0
+local Sqrt = math.sqrt
+
+-- Number of chord segments used to approximate arc length at compile time. Fixed so every
+-- peer produces identical tables from identical authoring data.
+local ArcLengthSamples = 64
+
+-- Evaluates a compiled spline at Time. Internal: shared by the arc-length precomputation and
+-- the public SampleSpline, so both can never drift apart. Allocation free.
+local function EvaluateCompiledSpline(Spline: any, Time: number): number
+    local Count = Spline.Count
+    if Count == 0 then
+        return 0.0
+    end
+    if Count == 1 then
+        return Spline.A[1]
+    end
+
+    local Times = Spline.Times
+    if Time <= Times[1] then
+        return Spline.First
+    end
+    if Time >= Times[Count] then
+        return Spline.Last
+    end
+
+    local Segment = Count - 1
+    for Index = 1, Count - 1 do
+        if Time < Times[Index + 1] then
+            Segment = Index
+            break
+        end
+    end
+
+    local Span = Times[Segment + 1] - Times[Segment]
+    local Alpha = 0.0
+    if Span > 0.0 then
+        Alpha = (Time - Times[Segment]) / Span
+    end
+
+    return Spline.A[Segment] + Alpha * (Spline.B[Segment] + Alpha * (Spline.C[Segment] + Alpha * Spline.D[Segment]))
+end
+
+-- Precomputes arc lengths along the (Time, Value) graph of the curve: ArcLengths[i] is the
+-- accumulated chord length up to sample i (0-based arc position i / ArcLengthSamples). Used by
+-- SampleSplineAtDistance for constant-speed sampling. Runs once at compile time.
+local function AttachArcLengths(Spline: any): ()
+    local Count = Spline.Count
+    if Count < 2 then
+        Spline.ArcLengths = { 0.0 }
+        Spline.ArcLengthSpan = 0.0
+        Spline.TotalLength = 0.0
+        return
+    end
+
+    local Times = Spline.Times
+    local First = Times[1]
+    local Span = Times[Count] - First
+    local Lengths = table.create(ArcLengthSamples + 1, 0.0)
+    local Total = 0.0
+    local Dt = Span / ArcLengthSamples
+    local PreviousValue = EvaluateCompiledSpline(Spline, First)
+    for Index = 1, ArcLengthSamples do
+        local Value = EvaluateCompiledSpline(Spline, First + Dt * Index)
+        local Dy = Value - PreviousValue
+        Total += Sqrt(Dt * Dt + Dy * Dy)
+        PreviousValue = Value
+        Lengths[Index + 1] = Total
+    end
+
+    Spline.ArcLengths = Lengths
+    Spline.ArcLengthSpan = Span
+    Spline.TotalLength = Total
+end
 
 --=========================================================
 -- [5] BEZIER (De Casteljau evaluation + derivative)
 --=========================================================
 
-local function LerpBezier(From, To, Alpha)
+local function LerpBezier(From: number, To: number, Alpha: number): number
     return From + (To - From) * Alpha
 end
 
 -- Registers a Bezier sampler and returns its easing id (EasingCount + n).
-function MathLib.RegisterBezierCurve(Kind, P0, P1, P2, P3)
+function MathLib.RegisterBezierCurve(Kind: number, P0: number, P1: number, P2: number?, P3: number?): number
     if Kind ~= 1 and Kind ~= 2 then
         return 0
     end
@@ -32,17 +106,17 @@ function MathLib.RegisterBezierCurve(Kind, P0, P1, P2, P3)
     return Id
 end
 
-function MathLib.GetSamplerCount()
+function MathLib.GetSamplerCount(): number
     return EasingCount + BezierCurveCount
 end
 
-function MathLib.BezierQuadratic(P0, P1, P2, Alpha)
+function MathLib.BezierQuadratic(P0: number, P1: number, P2: number, Alpha: number): number
     local A0 = LerpBezier(P0, P1, Alpha)
     local A1 = LerpBezier(P1, P2, Alpha)
     return LerpBezier(A0, A1, Alpha)
 end
 
-function MathLib.BezierCubic(P0, P1, P2, P3, Alpha)
+function MathLib.BezierCubic(P0: number, P1: number, P2: number, P3: number, Alpha: number): number
     local A0 = LerpBezier(P0, P1, Alpha)
     local A1 = LerpBezier(P1, P2, Alpha)
     local A2 = LerpBezier(P2, P3, Alpha)
@@ -51,12 +125,12 @@ function MathLib.BezierCubic(P0, P1, P2, P3, Alpha)
     return LerpBezier(B0, B1, Alpha)
 end
 
-function MathLib.BezierQuadraticDerivative(P0, P1, P2, Alpha)
+function MathLib.BezierQuadraticDerivative(P0: number, P1: number, P2: number, Alpha: number): number
     local OneMinus = 1.0 - Alpha
     return 2.0 * OneMinus * (P1 - P0) + 2.0 * Alpha * (P2 - P1)
 end
 
-function MathLib.BezierCubicDerivative(P0, P1, P2, P3, Alpha)
+function MathLib.BezierCubicDerivative(P0: number, P1: number, P2: number, P3: number, Alpha: number): number
     local OneMinus = 1.0 - Alpha
     local TermA = 3.0 * OneMinus * OneMinus * (P1 - P0)
     local TermB = 6.0 * OneMinus * Alpha * (P2 - P1)
@@ -72,9 +146,9 @@ end
 -- MathLib.SampleSpline can evaluate the curve without allocating.
 -- Kind of "Natural" builds a natural cubic spline (second derivatives solved
 -- with a tridiagonal sweep); any other kind builds a Catmull-Rom spline.
-function MathLib.CompileSpline(Kind, Times, Values)
+function MathLib.CompileSpline(Kind: string, Times: { number }, Values: { number }): any
     local Count = #Times
-    local Spline = {
+    local Spline: any = {
         Kind = Kind,
         Count = Count,
         Times = table.create(Count),
@@ -91,6 +165,7 @@ function MathLib.CompileSpline(Kind, Times, Values)
     if Count == 0 then
         Spline.First = 0.0
         Spline.Last = 0.0
+        AttachArcLengths(Spline)
         return Spline
     end
 
@@ -98,13 +173,14 @@ function MathLib.CompileSpline(Kind, Times, Values)
         Spline.A[1] = Values[1]
         Spline.First = Values[1]
         Spline.Last = Values[1]
+        AttachArcLengths(Spline)
         return Spline
     end
 
     Spline.First = Values[1]
     Spline.Last = Values[Count]
 
-    local Slope = table.create(Count)
+    local Slope: { number } = table.create(Count, 0.0)
     for Index = 1, Count - 1 do
         local Span = Spline.Times[Index + 1] - Spline.Times[Index]
         if Span <= 0.0 then
@@ -114,17 +190,17 @@ function MathLib.CompileSpline(Kind, Times, Values)
     end
 
     if Kind == "Natural" then
-        local Second = table.create(Count)
+        local Second: { number } = table.create(Count, 0.0)
         Second[1] = 0.0
         Second[Count] = 0.0
 
         local Unknown = Count - 2
         if Unknown > 0 then
-            local Lower = table.create(Unknown)
-            local Diagonal = table.create(Unknown)
-            local Upper = table.create(Unknown)
-            local Right = table.create(Unknown)
-            local Solution = table.create(Unknown)
+            local Lower: { number } = table.create(Unknown, 0.0)
+            local Diagonal: { number } = table.create(Unknown, 0.0)
+            local Upper: { number } = table.create(Unknown, 0.0)
+            local Right: { number } = table.create(Unknown, 0.0)
+            local Solution: { number } = table.create(Unknown, 0.0)
 
             for Position = 1, Unknown do
                 local Index = Position + 1
@@ -173,10 +249,11 @@ function MathLib.CompileSpline(Kind, Times, Values)
             Spline.D[Index] = (SecondHigh - SecondLow) * SpanSquared / 6.0
         end
 
+        AttachArcLengths(Spline)
         return Spline
     end
 
-    local Tangent = table.create(Count)
+    local Tangent: { number } = table.create(Count, 0.0)
     Tangent[1] = Slope[1]
     Tangent[Count] = Slope[Count - 1]
     for Index = 2, Count - 1 do
@@ -202,41 +279,58 @@ function MathLib.CompileSpline(Kind, Times, Values)
         Spline.D[Index] = 2.0 * (StartValue - EndValue) + TangentLow + TangentHigh
     end
 
+    AttachArcLengths(Spline)
     return Spline
 end
 
 -- Evaluates a compiled spline at Time. Allocation free: no tables are built here.
-function MathLib.SampleSpline(Spline, Time)
-    local Count = Spline.Count
-    if Count == 0 then
-        return 0.0
+function MathLib.SampleSpline(Spline: any, Time: number): number
+    return EvaluateCompiledSpline(Spline, Time)
+end
+
+-- Total (Time, Value) arc length of a compiled spline. Computed at compile time; this is a
+-- cheap field read, not an integration.
+function MathLib.GetSplineLength(Spline: any): number
+    return Spline.TotalLength or 0.0
+end
+
+-- Samples a compiled spline at an absolute arc-length offset from the curve start, for
+-- constant-speed motion along the curve. Binary-searches the precomputed arc-length table;
+-- allocation free. Distance is clamped to [0, Spline.TotalLength]. Returns the spline value at
+-- the resolved parameter.
+function MathLib.SampleSplineAtDistance(Spline: any, Distance: number): number
+    local Total = Spline.TotalLength or 0.0
+    if Total <= 0.0 then
+        return EvaluateCompiledSpline(Spline, 0.0)
     end
-    if Count == 1 then
-        return Spline.A[1]
+    if Distance <= 0.0 then
+        return EvaluateCompiledSpline(Spline, Spline.Times[1])
+    end
+    if Distance >= Total then
+        return EvaluateCompiledSpline(Spline, Spline.Times[Spline.Count])
     end
 
-    local Times = Spline.Times
-    if Time <= Times[1] then
-        return Spline.First
-    end
-    if Time >= Times[Count] then
-        return Spline.Last
-    end
-
-    local Segment = Count - 1
-    for Index = 1, Count - 1 do
-        if Time < Times[Index + 1] then
-            Segment = Index
-            break
+    local Lengths = Spline.ArcLengths
+    local Low, High = 1, ArcLengthSamples + 1
+    while Low < High do
+        local Mid = math.floor((Low + High) / 2)
+        if Lengths[Mid] < Distance then
+            Low = Mid + 1
+        else
+            High = Mid
         end
     end
 
-    local Span = Times[Segment + 1] - Times[Segment]
+    local Upper = Low
+    local Lower = Upper - 1
+    local Span = Lengths[Upper] - Lengths[Lower]
     local Alpha = 0.0
     if Span > 0.0 then
-        Alpha = (Time - Times[Segment]) / Span
+        Alpha = (Distance - Lengths[Lower]) / Span
     end
 
-    return Spline.A[Segment] + Alpha * (Spline.B[Segment] + Alpha * (Spline.C[Segment] + Alpha * Spline.D[Segment]))
+    local First = Spline.Times[1]
+    local Time = First + Spline.ArcLengthSpan * (((Lower - 1) + Alpha) / ArcLengthSamples)
+    return EvaluateCompiledSpline(Spline, Time)
 end
 end

@@ -60,7 +60,7 @@ function Suite.Body(Cases)
     -- [1] CONSTANTS
     --=========================================================
 
-    Kit.Equal("version", Data.Version, "1.0.0")
+    Kit.Equal("version", Data.Version, "1.1.0")
     Kit.Equal("maxJoints", Data.MaxJoints, 16)
     Kit.Equal("maxGestures", Data.MaxGestures, 4)
     Kit.Greater("sendRate", Data.SendRate, 0.0)
