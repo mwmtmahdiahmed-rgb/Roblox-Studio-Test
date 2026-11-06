@@ -358,6 +358,15 @@ moved under the correct `## 1.0.5` heading (entry text unchanged) and the duplic
 
 ---
 
+## 1.1.9
+
+### Docs re-synced to merged main (3ca2731, PR #8).
+
+- **Affected:** Documentation/Memory.md, ROJO_OHIO_MUMBAI/ServerStorage/ZeroScript/Memory.luau, Documentation/Changelog.md, ROJO_OHIO_MUMBAI/ReplicatedStorage/ProceduralAnimation/Shared/Changelog.luau
+- **Reason:** Post-merge re-sync, same convention as after PR #7: the memory docs must name the merge commit (3ca2731, PR #8, CI run 42178478823) and the branch they were re-verified on, otherwise a cold-start engineer is told to look at a stale main tip. No code, harness, or framework behaviour changed; gate unchanged (PASS 437 | FAIL 0); Config.Version stays 1.1.0.
+
+---
+
 ## Entry format
 
 ```
