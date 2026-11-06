@@ -1,3 +1,4 @@
+--!strict
 -- ProceduralAnimation/Client/ProceduralAnimator
 -- All motion is written to Motor6D.Transform. The Humanoid stays alive and in charge of physics.
 
@@ -13,7 +14,7 @@ local Connections = require(script.Parent.Parent.Parent.Shared.Utilities.Connect
 local PlayerTrackerModule = require(script.Parent.PlayerTracker)
 
 
-local Animator = {}
+local Animator: { [string]: any } = {}
 
 --=========================================================
 -- [1] CONSTANTS
@@ -43,7 +44,7 @@ local ActiveStates = StatePool.Active
 -- Read through the pool: StatePool.Count changes as characters are added and removed, so a
 -- captured copy would go stale (that is exactly what broke SetPreviewMode and SetLocomotionWeight
 -- before the split).
-local function GetActiveCount()
+local function GetActiveCount(): number
     return StatePool.Count
 end
 
@@ -53,12 +54,12 @@ local Destroyed = false
 local HeartbeatConnection = nil
 local PreviewMode = Config.PreviewAnchorRoot
 
-local EventCallbacks = {}
+local EventCallbacks: { [number]: { (any) -> () } } = {}
 for EventId = 1, MaxEventId do
     EventCallbacks[EventId] = {}
 end
 
-local function DispatchEvent(EventId, Value)
+local function DispatchEvent(EventId: number, Value: any): ()
     local List = EventCallbacks[EventId]
     if not List then
         return
@@ -75,7 +76,7 @@ end
 -- [3] EASING
 --=========================================================
 
-local function SampleEase(EasingId, Alpha)
+local function SampleEase(EasingId: number, Alpha: number): number
     return MathLib.Ease(EasingId, Alpha)
 end
 
@@ -137,6 +138,7 @@ local Pipeline = ClientPosePipeline({
     UpdateInverseKinematics = ClientRigKinematics.UpdateInverseKinematics,
     UpdateFabrikChain = ClientRigKinematics.UpdateFabrikChain,
     UpdateWaves = ClientRigKinematics.UpdateWaves,
+    ApplyLookAt = ClientRigKinematics.ApplyLookAt,
     SampleEase = SampleEase,
     Network = Network,
     IsPreviewMode = function()
@@ -157,7 +159,7 @@ local UpdateRemoteCharacter = Pipeline.UpdateRemoteCharacter
 -- Kept in this module (rather than the pipeline) because it walks CharacterStates/ActiveStates,
 -- the state pool this module owns. It only calls into the pipeline to produce each pose.
 
-local function OnHeartbeat(DeltaTime)
+local function OnHeartbeat(DeltaTime: number): ()
     if not Running then
         return
     end
@@ -215,22 +217,22 @@ local SetupCharacter = CharacterLifecycle.SetupCharacter
 local TeardownCharacter = CharacterLifecycle.TeardownCharacter
 
 
-function Animator.SetupCharacter(Character)
+function Animator.SetupCharacter(Character: any): any
     return SetupCharacter(Character)
 end
 
-function Animator.TeardownCharacter(Character)
+function Animator.TeardownCharacter(Character: any): any
     return TeardownCharacter(Character)
 end
 
-function Animator.SetLocomotionWeight(Weight)
+function Animator.SetLocomotionWeight(Weight: number): ()
     local Clamped = MathLib.Clamp01(Weight)
     for Index = 1, GetActiveCount() do
         ActiveStates[Index].LocomotionWeight = Clamped
     end
 end
 
-function Animator.SetIkTarget(Limb, WorldPosition, Weight)
+function Animator.SetIkTarget(Limb: string, WorldPosition: any, Weight: number): ()
     local Side = nil
     if Limb == "LeftHand" then
         Side = 1
@@ -250,7 +252,7 @@ function Animator.SetIkTarget(Limb, WorldPosition, Weight)
     end
 end
 
-function Animator.PlayGesture(GestureId, Duration, EasingId)
+function Animator.PlayGesture(GestureId: string, Duration: number?, EasingId: number?): ()
     local Clip = GestureClips[GestureId]
     if not Clip then
         Changelog.Log("PlayGesture: unknown gesture " .. tostring(GestureId))
@@ -281,7 +283,7 @@ function Animator.PlayGesture(GestureId, Duration, EasingId)
     end
 end
 
-function Animator.StopGesture(GestureId)
+function Animator.StopGesture(GestureId: string): ()
     local Clip = GestureClips[GestureId]
     for Index = 1, GetActiveCount() do
         local State = ActiveStates[Index]
@@ -298,7 +300,7 @@ function Animator.StopGesture(GestureId)
     end
 end
 
-function Animator.SetEasingOverride(JointIndexValue, EasingId)
+function Animator.SetEasingOverride(JointIndexValue: number, EasingId: number): ()
     if JointIndexValue < 1 or JointIndexValue > MaxJoints then
         return
     end
@@ -310,7 +312,47 @@ function Animator.SetEasingOverride(JointIndexValue, EasingId)
     end
 end
 
-function Animator.SetPreviewMode(Enabled)
+-- Sets (or clears, with nil) the world-space point the head aims at, on every active local
+-- character. Weight 0 keeps aiming disabled even with a target set; omitting Weight selects 1.
+-- Smoothing is Config.LookAt.Smoothing (exponential approach). No-op on preview-mode characters.
+-- Scales every active character's desired angles for one joint. 1.0 is neutral, 0 freezes the
+-- joint at its rig rest pose influence-wise (pose target becomes zero), 3.0 is the clamp.
+-- Applies to the pose buffer contents before smoothing, so it affects clips, IK, waves and
+-- look-at alike. Unknown indices are rejected.
+function Animator.SetJointAmplitude(JointIndexValue: number, Scale: number): ()
+    if JointIndexValue < 1 or JointIndexValue > MaxJoints then
+        return
+    end
+    local Clamped = math.clamp(Scale, 0.0, 3.0)
+    for Index = 1, GetActiveCount() do
+        local State = ActiveStates[Index]
+        State.JointAmplitude[JointIndexValue] = Clamped
+    end
+end
+
+-- Sets the world-space point the head aims at, on every active local character. Omitting Weight
+-- selects 1. Pass nil as the position to fade aiming OUT: the last target is retained while the
+-- smoothed weight eases to zero, so the head eases back to neutral instead of snapping.
+-- Smoothing is Config.LookAt.Smoothing (exponential approach); the angle limits reuse
+-- Config.IkAngleLimitMin/Max. Weight 0 disables aiming even with a target set.
+function Animator.SetLookAtTarget(TargetPosition: any, Weight: number?): ()
+    local Clamped = 1.0
+    if Weight ~= nil then
+        Clamped = MathLib.Clamp01(Weight)
+    end
+    if TargetPosition == nil then
+        Clamped = 0.0
+    end
+    for Index = 1, GetActiveCount() do
+        local State = ActiveStates[Index]
+        if TargetPosition ~= nil then
+            State.LookAtTarget = TargetPosition
+        end
+        State.LookAtTargetWeight = Clamped
+    end
+end
+
+function Animator.SetPreviewMode(Enabled: boolean): ()
     PreviewMode = Enabled and true or false
     for Index = 1, GetActiveCount() do
         local State = ActiveStates[Index]
@@ -323,7 +365,7 @@ function Animator.SetPreviewMode(Enabled)
     end
 end
 
-function Animator.Start()
+function Animator.Start(): ()
     if Running then
         return
     end
@@ -333,7 +375,7 @@ function Animator.Start()
     end
 end
 
-function Animator.Stop()
+function Animator.Stop(): ()
     if not Running then
         return
     end
@@ -347,7 +389,7 @@ function Animator.Stop()
     end
 end
 
-function Animator.BindToEvent(EventName, Callback)
+function Animator.BindToEvent(EventName: string, Callback: (any) -> ()): ()
     local EventId = Config.EventId[EventName]
     if not EventId then
         Changelog.Log("BindToEvent: unknown event " .. tostring(EventName))
@@ -368,7 +410,7 @@ local PlayerTracker = PlayerTrackerModule({
 -- [8] PUBLIC API
 --=========================================================
 
-function Animator.Init()
+function Animator.Init(): ()
     if Initialized then
         return
     end
@@ -387,7 +429,7 @@ function Animator.Init()
     Animator.Start()
 end
 
-function Animator.IsRunning()
+function Animator.IsRunning(): boolean
     return Running
 end
 
@@ -397,7 +439,7 @@ end
 --
 -- This exists so a host (a test harness, a mode switch, a game framework reload) can shut the
 -- framework down without leaking connections or character state. The bootstrapper never calls it.
-function Animator.Destroy()
+function Animator.Destroy(): ()
     if Destroyed then
         return
     end

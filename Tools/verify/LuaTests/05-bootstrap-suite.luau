@@ -21,6 +21,10 @@ local SERVER_PATH = "ServerScriptService/ProceduralAnimationServer.legacy.luau"
 -- The client bootstrapper is mirrored into StarterPlayer.StarterPlayerScripts, which is where it
 -- actually executes. Both paths resolve to the same source.
 local CLIENT_PATH = "StarterPlayer.StarterPlayerScripts.ProceduralAnimationClient"
+-- Lifecycle logic lives in the Bootstrap modules (scripts may not return values under
+-- --!strict); source-level assertions target those modules.
+local SERVER_MODULE = "ReplicatedStorage/ProceduralAnimation/Server/Bootstrap/ServerBootstrap.luau"
+local CLIENT_MODULE = "ReplicatedStorage/ProceduralAnimation/Client/Bootstrap/ClientBootstrap.luau"
 
 local RunScript = nil
 
@@ -40,8 +44,8 @@ function Suite.Body(Cases)
     -- [1] SOURCE LEVEL GUARANTEES
     --=========================================================
 
-    local ServerSource = Env.GetSource(SERVER_PATH)
-    local ClientSource = Env.GetSource(CLIENT_PATH)
+    local ServerSource = Env.GetSource(SERVER_MODULE)
+    local ClientSource = Env.GetSource(CLIENT_MODULE)
 
     Kit.NotNil("source.serverPresent", ServerSource)
     Kit.NotNil("source.clientPresent", ClientSource)

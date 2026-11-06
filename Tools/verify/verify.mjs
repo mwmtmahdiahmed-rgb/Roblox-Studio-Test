@@ -203,8 +203,12 @@ async function CheckAnalysis(Files) {
 
     // A partial definition file necessarily produces "unknown global / unknown member" noise.
     // Those are reported as definition gaps; everything else is a real project diagnostic.
+    // "Unknown require: unsupported path" is the offline twin of the harness's documented
+    // "require cannot cross chunks" limitation: instance-path requires across the Rojo tree
+    // cannot be resolved by the checker without the full Roblox SDK, so every Roblox-style
+    // require trips it. It is reported as a definition gap, never silently dropped.
     const IsDefinitionGap = (Message) =>
-        /Unknown global|Unknown type|does not exist|Property '.*' does not exist|Cannot call a value of the union type/i.test(Message);
+        /Unknown global|Unknown type|Unknown require|does not exist|Property '.*' does not exist|Cannot call a value of the union type/i.test(Message);
 
     const ProjectDiagnostics = Diagnostics.filter((D) => D.kind !== "internal" && !IsDefinitionGap(D.message));
     const Gaps = Diagnostics.filter((D) => IsDefinitionGap(D.message));

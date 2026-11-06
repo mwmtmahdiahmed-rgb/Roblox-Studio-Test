@@ -89,10 +89,9 @@ local function FindMotor(Character, Name)
     return Motors:FindFirstChild(Name)
 end
 
--- The framework drives joints by rotation only: ApplyPose writes
--- CFrame.fromEulerAnglesXYZ(X, Y, Z) into Motor6D.Transform, and the Root joint additionally
--- carries the vertical body offset. Joint translation lives in the rest C0 and is never
--- rewritten, so the pose magnitude must be measured from the rotation, not the position.
+-- Ordinary joints get a pure CFrame.fromEulerAnglesXYZ written into Motor6D.Transform; the
+-- Root joint additionally carries the vertical body offset, and other joints carry whatever
+-- the pose path wrote. The pose magnitude must be measured from the rotation, not the position.
 local function TransformMagnitude(Motor)
     if not Motor or not Motor.Transform then
         return 0.0
@@ -501,6 +500,69 @@ function Suite.Body(Cases)
             Kit.Equal("network.packetLength", buffer.len(Packet), 116)
         end
     end
+
+    --=========================================================
+    -- [9b] PHASE 8 FEATURES
+    --=========================================================
+
+    -- Settle back to a stationary idle baseline so the look-at deltas are measured against
+    -- a stable pose rather than post-walk residue.
+    RootPart.AssemblyLinearVelocity = _G.Vector3.new(0.0, 0.0, 0.0)
+    Humanoid.MoveDirection = _G.Vector3.new(0.0, 0.0, 0.0)
+    for _ = 1, 90 do
+        Env.PumpFrames(1, 1.0 / 60.0)
+    end
+
+    local Neck = FindMotor(Character, "Neck")
+    Kit.NotNil("lookat.neckMotor", Neck)
+
+    local BX, BY, BZ = Neck.Transform:ToEulerAnglesXYZ()
+    local BaselineMag = math.abs(BX) + math.abs(BY) + math.abs(BZ)
+
+    -- Aim far away to the right and slightly up. After a second the neck must have turned.
+    Animator.SetLookAtTarget(_G.Vector3.new(100.0, 5.0, 0.0), 1.0)
+    for _ = 1, 60 do
+        Env.PumpFrames(1, 1.0 / 60.0)
+    end
+    local AimMag = TransformMagnitude(Neck)
+    Kit.Greater("lookat.turnsNeck", math.abs(AimMag - BaselineMag), 0.4,
+        string.format("neck |transform| moved from %.3f to %.3f", BaselineMag, AimMag))
+
+    -- Fade out: nil keeps the last target while the smoothed weight decays, so the head eases
+    -- back toward neutral instead of snapping.
+    Animator.SetLookAtTarget(nil)
+    for _ = 1, 240 do
+        Env.PumpFrames(1, 1.0 / 60.0)
+    end
+    local BackMag = TransformMagnitude(Neck)
+    Kit.Less("lookat.fadesOut", math.abs(BackMag - BaselineMag), math.abs(AimMag - BaselineMag) * 0.5,
+        string.format("neck |transform| settled to %.3f (baseline %.3f, aimed %.3f)", BackMag, BaselineMag, AimMag))
+
+    -- Joint amplitude: freezing a joint's channel must collapse its pose contribution.
+    local WaistMotor = FindMotor(Character, "Waist")
+    Kit.Guard("amplitude.freezeWaist", function()
+        Animator.SetJointAmplitude(1, 0.0)
+        return true
+    end)
+    for _ = 1, 120 do
+        Env.PumpFrames(1, 1.0 / 60.0)
+    end
+    Kit.Less("amplitude.waistCollapsed", TransformMagnitude(WaistMotor), 0.02,
+        string.format("amplitude 0 froze waist at |transform| %.4f", TransformMagnitude(WaistMotor)))
+    Kit.Guard("amplitude.restoreWaist", function()
+        Animator.SetJointAmplitude(1, 1.0)
+        return true
+    end)
+    Kit.Guard("amplitude.rejectsBadJoint", function()
+        Animator.SetJointAmplitude(999, 1.5)
+        Animator.SetJointAmplitude(-1, 1.5)
+        return true
+    end)
+    Kit.Guard("amplitude.clampsScale", function()
+        Animator.SetJointAmplitude(1, 999.0)
+        Animator.SetJointAmplitude(1, 1.0)
+        return true
+    end)
 
     --=========================================================
     -- [10] TEARDOWN AND LEAK CHECKS

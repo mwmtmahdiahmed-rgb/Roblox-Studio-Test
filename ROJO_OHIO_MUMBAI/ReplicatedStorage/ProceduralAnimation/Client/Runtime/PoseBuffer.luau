@@ -1,3 +1,4 @@
+--!strict
 -- ProceduralAnimation/Client/PoseBuffer
 -- The per-joint pose buffer: a packed array of three f32s (X, Y, Z euler offsets in radians)
 -- per joint, allocated once per character and rewritten every frame.
@@ -18,7 +19,7 @@ local BufferWriteF32 = buffer.writef32
 
 -- Adds an offset to one joint's entry. Used for additive layers that do not need to know what
 -- the base pose already wrote.
-local function WritePoseAdd(PoseBuffer, Joint, X, Y, Z)
+local function WritePoseAdd(PoseBuffer: buffer, Joint: number, X: number, Y: number, Z: number): ()
     local Offset = (Joint - 1) * PoseBytesPerJoint
     BufferWriteF32(PoseBuffer, Offset, BufferReadF32(PoseBuffer, Offset) + X)
     BufferWriteF32(PoseBuffer, Offset + 4, BufferReadF32(PoseBuffer, Offset + 4) + Y)
@@ -27,7 +28,7 @@ end
 
 -- Blends a value into one joint's entry. Used where a layer has a weight and should replace
 -- rather than accumulate (IK, gesture overrides).
-local function WritePoseBlend(PoseBuffer, Joint, X, Y, Z, Weight)
+local function WritePoseBlend(PoseBuffer: buffer, Joint: number, X: number, Y: number, Z: number, Weight: number): ()
     local Offset = (Joint - 1) * PoseBytesPerJoint
     local Inverse = 1.0 - Weight
     BufferWriteF32(PoseBuffer, Offset, BufferReadF32(PoseBuffer, Offset) * Inverse + X * Weight)

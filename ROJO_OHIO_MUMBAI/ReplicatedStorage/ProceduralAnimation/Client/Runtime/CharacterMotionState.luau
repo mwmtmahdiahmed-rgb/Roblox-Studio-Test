@@ -1,3 +1,4 @@
+--!strict
 -- ProceduralAnimation/Client/CharacterMotionState
 -- The character-level motion state machine that sits above raw clip sampling:
 --   * jump phases (grounded -> anticipation -> launch -> airborne -> landing -> recovery),
@@ -7,7 +8,7 @@
 -- Split out of ProceduralAnimator to respect the 500-line limit; bodies are unchanged. State
 -- lives on the caller's State table, so this module owns nothing across frames.
 
-return function(Dependencies)
+return function(Dependencies: { [string]: any }): any
 local Config = Dependencies.Config
 -- Injected by the animator: the bus is animator-owned, this module only raises events.
 local DispatchEvent = Dependencies.DispatchEvent
@@ -32,13 +33,20 @@ local JumpStateRecovery = 5
 
 local Exp = math.exp
 
+-- Squash & stretch impulse strength scales with how fast the character hit the ground, clamped
+-- so hops still dip and high falls do not collapse the rig. Only the horizontal scale is taken
+-- from config; the clamp bounds keep the effect inside the rig's skin width.
+local SquashFallReference = 40.0
+local SquashImpulseMin = 0.5
+local SquashImpulseMax = 2.0
+
 local MotionState = {}
 
 --=========================================================
 -- [2] STATE MACHINE
 --=========================================================
 
-local function GetJumpSegment(StateId)
+local function GetJumpSegment(StateId: number): any
     if StateId == JumpStateAnticipation then
         return JumpClips[1]
     elseif StateId == JumpStateLaunch then
@@ -53,11 +61,11 @@ local function GetJumpSegment(StateId)
     return nil
 end
 
-local function FireBusEvent(EventId)
+local function FireBusEvent(EventId: number): ()
     DispatchEvent(EventId, 1)
 end
 
-local function UpdateJump(State, DeltaTime)
+local function UpdateJump(State: any, DeltaTime: number): ()
     local Humanoid = State.Humanoid
 
     if State.JumpState ~= JumpStateGrounded then
@@ -96,6 +104,17 @@ local function UpdateJump(State, DeltaTime)
         State.JumpState = JumpStateLanding
         State.JumpTime = 0.0
         FireBusEvent(Config.EventId.Landing)
+
+        -- Squash & stretch: kick the landing spring downward, scaled by fall speed. The spring
+        -- rides the root vertical offset in ClientPosePipeline.ComputeRootOffset, so the dip and
+        -- rebound blend through the same pose path as everything else.
+        local SquashStretch = Config.SquashStretch
+        if SquashStretch and SquashStretch.Enabled then
+            local RootPart = State.RootPart
+            local FallSpeed = math.abs(RootPart.AssemblyLinearVelocity.Y)
+            local Scale = math.clamp(FallSpeed / SquashFallReference, SquashImpulseMin, SquashImpulseMax)
+            State.SquashSpring.Velocity -= SquashStretch.Strength * Scale
+        end
     end
 
     local TargetWeight = 0.0
@@ -106,7 +125,7 @@ local function UpdateJump(State, DeltaTime)
     State.JumpWeight += (TargetWeight - State.JumpWeight) * Blend
 end
 
-local function UpdateGestures(State, DeltaTime)
+local function UpdateGestures(State: any, DeltaTime: number): ()
     local Gestures = State.Gestures
     for Slot = 1, MaxGestures do
         local Gesture = Gestures[Slot]

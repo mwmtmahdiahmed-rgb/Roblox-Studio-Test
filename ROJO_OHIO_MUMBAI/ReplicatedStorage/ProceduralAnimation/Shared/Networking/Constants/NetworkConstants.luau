@@ -1,3 +1,4 @@
+--!strict
 -- ProceduralAnimation/Shared/AnimationNetworkConstants
 -- Packet layout, buffer and math aliases, and quantization constants shared by
 -- AnimationNetwork (send path + server relay) and AnimationNetworkReceive
@@ -9,7 +10,7 @@ local Players = game:GetService("Players")
 
 local Config = require(script.Parent.Parent.Parent.AnimationConfig)
 
-local Constants = {}
+local Constants: { [string]: any } = {}
 
 -- [1] CONSTANTS
 local IsServer = RunService:IsServer()
@@ -64,7 +65,7 @@ local PoseFloatLength = MaxJoints * 3 * 4
 local MaxAngleRadians = math.pi * 1.05
 
 -- [2] PACKET ENCODING
-local function WriteClampedI16(PacketBuffer, Offset, Value)
+local function WriteClampedI16(PacketBuffer: buffer, Offset: number, Value: number): ()
     if Value ~= Value then
         Value = 0.0
     end
@@ -76,7 +77,7 @@ local function WriteClampedI16(PacketBuffer, Offset, Value)
     BufferWriteI16(PacketBuffer, Offset, Floor(Value + 0.5))
 end
 
-local function ReadClampedI16(PacketBuffer, Offset, Inverse)
+local function ReadClampedI16(PacketBuffer: buffer, Offset: number, Inverse: number): number
     return BufferReadI16(PacketBuffer, Offset) * Inverse
 end
 

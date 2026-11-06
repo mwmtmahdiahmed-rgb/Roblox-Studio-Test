@@ -1,3 +1,4 @@
+--!strict
 -- ProceduralAnimation/Shared/Changelog
 -- Append-only record of every fix, change and design decision in this framework.
 --
@@ -222,6 +223,90 @@ Changelog.Entries = {
         Description = "Verification harness: Suite.Reset was declared but never invoked; ResetModuleCache dropped modules without running their teardown; script lifecycle handles were discarded.",
         File = "Tools/verify/src/00-runner.luau, src/03-env.luau, src/02-mock-services.luau",
         Reason = "Three harness defects that made lifecycle tests unreliable. Suites silently ran against the previous suite's world, and connections leaked across suites. ResetModuleCache now runs each cached module's Destroy/Shutdown first, and RunScriptFile retains returned handles so teardown can release them.",
+    },
+    {
+        Version = "1.0.6",
+        Description = "Extracted the bootstrap lifecycle logic out of the StarterPlayer/ServerScriptService scripts into ModuleScripts that return lifecycle handles.",
+        File = "Client/Bootstrap/ClientBootstrap, Server/Bootstrap/ServerBootstrap, ProceduralAnimationClient, ProceduralAnimationServer",
+        Reason = "Scripts may not return values, and the verification harness and embedders need a real ModuleScript return for the destroy path. The starter scripts are now thin require wrappers; all lifecycle logic type-checks as a module and exposes Destroy().",
+    },
+    {
+        Version = "1.0.6",
+        Description = "Migrated every script in the repository to --!strict.",
+        File = "All files",
+        Reason = "Phase 6. All 28 scripts declare --!strict as their first line; analysis reports 0 errors and 0 warnings (40 pre-existing definition gaps at engine boundaries remain, documented, not regressions). Script-may-not-return-values is exactly what forced the 1.0.6 bootstrap extraction. No behaviour change intended; all suites and the API baseline remain green.",
+    },
+    {
+        Version = "1.0.6",
+        Description = "Harness: LuaTests bootstrap and lifecycle suites retargeted to the two extracted Bootstrap modules.",
+        File = "Tools/verify/LuaTests/05-bootstrap-suite.luau, Tools/verify/LuaTests/07-lifecycle-suite.luau",
+        Reason = "Source assertions pointed at the starter scripts, which no longer contain the lifecycle code. Assertions now read ClientBootstrap.luau / ServerBootstrap.luau by RojoPath.",
+    },
+    {
+        Version = "1.0.7",
+        Description = "StatePool.Compact early-outs when no removals are pending, via a PendingRemovals counter incremented by Remove.",
+        File = "StatePool",
+        Reason = "Phase 7. Steady-state frames (the common case) paid an O(n) scan to compact nothing. Measured ~1021 ns -> ~67 ns per Compact call on a full 16-state pool; Remove remains correct and the Animator.Destroy Remove-then-Clear path resets the counter.",
+    },
+    {
+        Version = "1.0.7",
+        Description = "ApplyPose root-joint write fast path: writes a pure CFrameAngles when the vertical offset is below 0.0002.",
+        File = "ClientPosePipeline",
+        Reason = "Phase 7. Avoids composing CFrame.new(0, y, 0) * angles every frame for rigs with no vertical root motion. The composition is only built when the offset is live. (Side effect of this change: it made explicit that Motor6D.Transform honours translation, contradicting the docs' earlier rotation-only claim; SyntaxReference 4 was corrected.)",
+    },
+    {
+        Version = "1.0.7",
+        Description = "FABRIK chains reuse per-chain TargetScratch tables instead of allocating a Vector3 per frame; FootRayDirection is cached once at state creation.",
+        File = "ClientRigKinematics, CharacterLifecycle",
+        Reason = "Phase 7. Two per-frame allocations removed from the hot loop. TargetScratch is created in the chain init next to the chain definition and lazily recreated if absent; FootRayDirection is the constant (0, -Config.FootRayLength, 0) cached on the state.",
+    },
+    {
+        Version = "1.0.7",
+        Description = "Added Tools/verify/bench.mjs, a machine-dependent comparative micro-benchmark of the math hot paths.",
+        File = "Tools/verify/bench.mjs",
+        Reason = "Phase 7. Numbers are recorded in Memory.md; they are for same-machine comparison only and prove nothing about runtime behaviour on a live rig.",
+    },
+    {
+        Version = "1.1.0",
+        Description = "Horizontal speed low-pass: the locomotion blend now uses an exponentially filtered speed (Config.VelocityFilterRate, default 12.0) instead of raw AssemblyLinearVelocity.",
+        File = "ConfigData, ClientPosePipeline, CharacterLifecycle",
+        Reason = "AssemblyLinearVelocity jitters frame to frame, which shimmered the idle/walk/run blend. Rate 0 disables the filter (previous behaviour). Filtered value persisted on State.FilteredSpeed; new top-level config key, no existing config changed.",
+    },
+    {
+        Version = "1.1.0",
+        Description = "Spline arc-length lookup tables: CompileSpline precomputes 64-segment chord arc lengths along the (Time, Value) graph; new exports GetSplineLength and SampleSplineAtDistance for constant-speed sampling.",
+        File = "MathCurves, AnimationMath",
+        Reason = "Keyframe animation needs constant-speed playback; sampling at equal time offsets over a non-uniform curve is not constant-speed. The table is built once at compile time, is shared by all three compile paths (Count==0, Count==1, Natural, Catmull-Rom via AttachArcLengths), and SampleSplineAtDistance binary-searches it allocation-free. Guard: Empty/single-key splines report zero length safely.",
+    },
+    {
+        Version = "1.1.0",
+        Description = "MathLib.StepSpring: configurable damped spring integrated with semi-implicit Euler; caller-owned State, mutated in place, zero allocation.",
+        File = "MathCore, AnimationMath",
+        Reason = "Springs drive the new squash & stretch root offset and are available to consumers for secondary motion. Semi-implicit Euler is stable for the shipped stiffness range (170) at frame rates down to ~15 Hz; the integration clamps dt to 0.0667s in the one runtime caller.",
+    },
+    {
+        Version = "1.1.0",
+        Description = "Squash & stretch: landing kicks a damped spring mounted on the root vertical offset, impulse scaled by fall speed (clamped 0.5-2.0x) and Config.SquashStretch.Strength.",
+        File = "CharacterMotionState, ClientPosePipeline, CharacterLifecycle, ConfigData",
+        Reason = "Landings read as weighty. Enabled by default (Strength 2.4, Stiffness 170, Damping 14); set Config.SquashStretch.Enabled = false to opt out. Impulse rides the same root-offset path as the idle/walk/run bob, so no new pose write path was created. Falls back to no-op when previewing or when the spring is disabled.",
+    },
+    {
+        Version = "1.1.0",
+        Description = "Head look-at: Animator.SetLookAtTarget(Vector3?, Weight?) steers the Neck joint toward a world-space target in the root's frame; exponentially smoothed (Config.LookAt.Smoothing), angle-limited by Config.IkAngleLimitMin/Max; nil fades the aim out instead of snapping.",
+        File = "ProceduralAnimator, ClientRigKinematics (ApplyLookAt), ClientPosePipeline, CharacterLifecycle, ConfigData",
+        Reason = "Common avatar behaviour (gaze at the object the player is interacting with) with no new engine surface: implemented as an additive yaw/pitch blend into the existing pose buffer, applied after IK and before ApplyPose. Smoothing and the fade-out behaviour mean targets can appear/disappear without pops. Default weight is 0; the feature costs one table read + an Exp() per frame when unused.",
+    },
+    {
+        Version = "1.1.0",
+        Description = "Per-joint amplitude: Animator.SetJointAmplitude(JointIndexValue, Scale) scales a joint's desired angles before smoothing.",
+        File = "ProceduralAnimator, ClientPosePipeline, CharacterLifecycle",
+        Reason = "Lets consumers damp or exaggerate any channel (e.g. reduce hand noise, emphasise head motion) without authoring new clips. Clamped 0..3; preallocated 16-slot table on the state; one read + compare per joint per frame when unset. Affects clips, IK, waves, FABRIK and look-at alike because it applies at the pose buffer.",
+    },
+    {
+        Version = "1.1.0",
+        Description = "Version bump to 1.1.0: new top-level config keys only (VelocityFilterRate, SquashStretch, LookAt); Config.Version = 1.1.0; packet layout and all pre-existing exports unchanged.",
+        File = "ConfigData, Documentation/Changelog.md, Shared/Changelog.luau",
+        Reason = "Minor release for Phase 8 feature completion. The API baseline (Tools/verify/baseline/api.json, frozen) permits added exports; nothing existing changed shape. 1.0.6 and 1.0.7 are changelog-only phases (no runtime Version bump); this entry records the release.",
     },
 }
 

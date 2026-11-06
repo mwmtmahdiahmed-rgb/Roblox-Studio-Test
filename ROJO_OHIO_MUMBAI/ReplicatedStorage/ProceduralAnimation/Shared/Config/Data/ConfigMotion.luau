@@ -1,3 +1,4 @@
+--!strict
 -- ProceduralAnimation/Shared/AnimationConfigMotion
 
 return function(Config, Private)

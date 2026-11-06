@@ -44,11 +44,13 @@ declare Vector2: {
 }
 
 declare CFrame: {
-    new: (any, any, any) -> any,
+    new: (...any) -> any,
     identity: any,
     lookAt: (any, any, any) -> any,
     fromEulerAnglesXYZ: (number, number, number) -> any,
+    fromAxisAngle: (any, number) -> any,
     Angles: (number, number, number) -> any,
+    AnglesYXZ: (number, number, number) -> any,
 }
 
 declare Color3: {
@@ -103,7 +105,7 @@ declare shared: any
 
 -- `Instance` is both a namespace and the membership test used by the mocks.
 declare Instance: {
-    new: (className: string, parent: any) -> any,
+    new: (...any) -> any,
     fromExisting: (any) -> any,
     IsA: (any, string) -> boolean,
 }
@@ -127,6 +129,13 @@ declare Instance: {
 --=========================================================
 -- [5] `task` SCHEDULER
 --=========================================================
+
+-- `debug` is partially known to the analyser; profiling hooks are not. Declaring the whole
+-- namespace as-is would clash, so only the missing keys are provided via a loose table.
+declare debug: {
+    profilebegin: (string) -> (),
+    profileend: () -> (),
+}
 
 declare task: {
     spawn: (...any) -> any,

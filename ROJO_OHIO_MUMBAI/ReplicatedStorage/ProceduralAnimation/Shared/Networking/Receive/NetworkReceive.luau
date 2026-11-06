@@ -1,3 +1,4 @@
+--!strict
 -- ProceduralAnimation/Shared/AnimationNetworkReceive
 -- Client receive path: per-player jitter buffer states, the pose decoder and the
 -- render-time interpolation sampler. Split out of AnimationNetwork to stay under the

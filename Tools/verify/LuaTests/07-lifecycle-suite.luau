@@ -333,7 +333,7 @@ Suite.Body = function(Cases)
 
         Kit.Guard("bootstrap.serverReturnsHandle", function()
             ResetWorld()
-            local Source = Env.GetSource("ServerScriptService/ProceduralAnimationServer.legacy.luau")
+            local Source = Env.GetSource("ReplicatedStorage/ProceduralAnimation/Server/Bootstrap/ServerBootstrap.luau")
             Kit.NotNil("bootstrap.serverSourcePresent", Source)
             Kit.True("bootstrap.serverHasDestroy",
                 string.find(Source, "function Server.Destroy") ~= nil)
@@ -341,7 +341,7 @@ Suite.Body = function(Cases)
         end)
 
         Kit.Guard("bootstrap.clientReturnsHandle", function()
-            local Source = Env.GetSource("StarterPlayer.StarterPlayerScripts.ProceduralAnimationClient")
+            local Source = Env.GetSource("ReplicatedStorage/ProceduralAnimation/Client/Bootstrap/ClientBootstrap.luau")
             Kit.NotNil("bootstrap.clientSourcePresent", Source)
             Kit.True("bootstrap.clientHasDestroy",
                 string.find(Source, "function Bootstrap.Destroy") ~= nil)
@@ -349,7 +349,7 @@ Suite.Body = function(Cases)
         end)
 
         Kit.Guard("bootstrap.clientTracksConnections", function()
-            local Source = Env.GetSource("StarterPlayer.StarterPlayerScripts.ProceduralAnimationClient")
+            local Source = Env.GetSource("ReplicatedStorage/ProceduralAnimation/Client/Bootstrap/ClientBootstrap.luau")
             -- The two local-player signals must be stored, not fire-and-forget.
             Kit.True("bootstrap.clientTracksCharacterAdded",
                 string.find(Source, "Track%(Player.CharacterAdded:Connect") ~= nil)

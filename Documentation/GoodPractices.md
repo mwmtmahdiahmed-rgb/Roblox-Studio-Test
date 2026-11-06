@@ -268,20 +268,27 @@ converges in the same wall-clock time.
 
 ---
 
-## 9. Rotation-only Transform, and how to read a pose
+## 9. `Motor6D.Transform` is a full CFrame — and how to read a pose
 
-`Motor6D.Transform` carries **rotation only**. Translation stays in the joint's `C0`.
+Ordinary joints get a pure rotation written into `Motor6D.Transform`; the root joint may also
+carry the framework's vertical body offset (locomotion bob, squash & stretch) as a translation.
+Both are honoured by the motor.
 
 ```lua
--- Writing: euler angles, no position
+-- Writing ordinary joints: euler angles
 Motor.Transform = CFrameAngles(X, Y, Z)
+
+-- The root joint, when a vertical offset is live:
+Motor.Transform = CFrameNew(0.0, RootOffsetY, 0.0) * CFrameAngles(X, Y, Z)
 
 -- Reading a pose back (in a test or debug view):
 local X, Y, Z = Motor.Transform:ToEulerAnglesXYZ()
 ```
 
-`Transform.Position` will always be `(0,0,0)`. That is correct, not a bug. **Never** conclude
-"the animation is broken" from a zero position.
+`Transform.Position` is `(0,0,0)` for ordinary joints and `(0, RootOffsetY, 0)` for the root
+joint while a vertical offset is live. Measuring the root joint's `Position.Y` is a valid squash/
+stretch probe. **Never** conclude "the animation is broken" from an unexpected position without
+checking which joint you read.
 
 ---
 

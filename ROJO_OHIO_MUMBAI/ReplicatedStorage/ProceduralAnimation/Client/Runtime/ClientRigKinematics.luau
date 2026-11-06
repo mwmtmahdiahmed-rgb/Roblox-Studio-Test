@@ -1,3 +1,4 @@
+--!strict
 -- ProceduralAnimation/Client/ClientRigKinematics
 -- Inverse kinematics and procedural chain solving for a character rig:
 --   * FABRIK chain solving driven by authored chain definitions (the spine chain ships enabled),
@@ -11,7 +12,7 @@
 -- it into a local. Everything is exposed through the returned table so the pose pipeline can
 -- call it by name.
 
-return function(Dependencies)
+return function(Dependencies: { [string]: any }): any
 local Config = Dependencies.Config
 local MathLib = Dependencies.MathLib
 local Workspace = Dependencies.Workspace
@@ -28,6 +29,7 @@ local Sqrt = math.sqrt
 local Exp = math.exp
 local Sin = math.sin
 local Acos = math.acos
+local Atan2 = math.atan2
 local Clamp = math.clamp
 local CFrameAxisAngle = CFrame.fromAxisAngle
 local Vector3New = Vector3.new
@@ -41,6 +43,7 @@ local ArmElbow = Config.ArmJointIndex.Elbow
 local WaveOrder = Config.Compiled.WaveOrder
 local CompiledWaves = Config.Compiled.Waves
 local JointIndex = Config.JointIndex
+local NeckJointIndex = JointIndex.Neck
 
 local Kinematics = {}
 
@@ -54,12 +57,12 @@ local Kinematics = {}
 
 -- Defined further down; declared here so the chain helpers below close over a single upvalue
 -- instead of resolving an accidental global.
-local ApplyWorldDirection
+local ApplyWorldDirection: (State: any, JointIndexValue: number, DirectionX: number, DirectionY: number, DirectionZ: number, Weight: number) -> ()
 
 -- FABRIK chain update: drives multi-bone chains (spine, tail) toward a target.
 -- ChainState holds pre-allocated positions; we reuse them every frame.
 
-local function UpdateFabrikChain(State, ChainDef, TargetOffset, Weight)
+local function UpdateFabrikChain(State: any, ChainDef: any, TargetOffset: any, Weight: number): ()
     if Weight <= 0.001 then
         return
     end
@@ -111,12 +114,13 @@ local function UpdateFabrikChain(State, ChainDef, TargetOffset, Weight)
     end
 
     -- Target is the rest end-effector plus an offset (from waves or other sources).
+    -- The solver only reads .X/.Y/.Z, so a per-chain scratch table replaces a fresh Vector3
+    -- allocation every frame.
     local EndRest = Positions[BoneCount + 1]
-    local Target = Vector3New(
-        EndRest.X + TargetOffset.X,
-        EndRest.Y + TargetOffset.Y,
-        EndRest.Z + TargetOffset.Z
-    )
+    local Target = ChainState.TargetScratch
+    Target.X = EndRest.X + TargetOffset.X
+    Target.Y = EndRest.Y + TargetOffset.Y
+    Target.Z = EndRest.Z + TargetOffset.Z
 
     MathLib.SolveFabrik(Positions, Lengths, Target, ChainDef.Tolerance, ChainDef.MaxIterations)
 
@@ -139,13 +143,13 @@ end
 
 -- Wave sampling: layered harmonics applied additively to specific joints.
 -- Driven from data in AnimationConfig; no code changes needed to add a new wave.
-local WaveJointMap = {
+local WaveJointMap: { [string]: { any } } = {
     Breathing = { JointIndex.Waist, JointIndex.Chest },
     HeadSway = { JointIndex.Neck },
     BodyBob = { JointIndex.Waist },
 }
 
-local function UpdateWaves(State, Time)
+local function UpdateWaves(State: any, Time: number): ()
     -- Walk the compile-time sorted order rather than pairs(): the lookup table is unordered,
     -- and a stable order keeps the additive result identical on every run and every peer.
     for OrderIndex = 1, #WaveOrder do
@@ -171,7 +175,7 @@ end
 
 -- Two-bone analytic solver: law of cosines on the triangle formed by root, mid and target,
 -- with the bend plane defined by a pole vector.
-local function SolveTwoBoneChain(RootPosition, TargetPosition, Length1, Length2, PolePosition)
+local function SolveTwoBoneChain(RootPosition: any, TargetPosition: any, Length1: number, Length2: number, PolePosition: any): (number, number, number, number, number, number)
     local ToTargetX = TargetPosition.X - RootPosition.X
     local ToTargetY = TargetPosition.Y - RootPosition.Y
     local ToTargetZ = TargetPosition.Z - RootPosition.Z
@@ -231,7 +235,7 @@ end
 
 -- Converts a desired world bone direction into a joint-space Euler offset and blends it into
 -- the pose buffer. Everything still goes through Motor6D.Transform.
-function ApplyWorldDirection(State, JointIndexValue, DirectionX, DirectionY, DirectionZ, Weight)
+function ApplyWorldDirection(State: any, JointIndexValue: number, DirectionX: number, DirectionY: number, DirectionZ: number, Weight: number): ()
     local Joint = State.Joints[JointIndexValue]
     if not Joint then
         return
@@ -268,7 +272,66 @@ function ApplyWorldDirection(State, JointIndexValue, DirectionX, DirectionY, Dir
     WritePoseBlend(State.Pose, JointIndexValue, EulerX, EulerY, EulerZ, Weight)
 end
 
-local function UpdateInverseKinematics(State, DeltaTime)
+-- Look-at: aims the Neck joint toward a world-space target by blending an additive yaw/pitch
+-- into the pose buffer. Angles are measured in the root part's frame, so the head tracks targets
+-- relative to the body's facing; the exponential weight smoothing means targets appear and
+-- disappear gradually instead of snapping. Yaw/pitch are clamped to the same limits as IK.
+-- Target and weights live on the state; a nil target disables aiming entirely.
+local function ApplyLookAt(State: any, DeltaTime: number): ()
+    local TargetWeight = State.LookAtTargetWeight
+    if TargetWeight == nil then
+        TargetWeight = 0.0
+    end
+
+    local Smoothing = Config.LookAt and Config.LookAt.Smoothing or 8.0
+    local Blend = 1.0 - Exp(-Smoothing * DeltaTime)
+    local PreviousWeight = State.LookAtWeight or 0.0
+    local Applied = PreviousWeight + (TargetWeight - PreviousWeight) * Blend
+    State.LookAtWeight = Applied
+    if Applied < 0.001 then
+        return
+    end
+
+    local Target = State.LookAtTarget
+    if not Target then
+        return
+    end
+
+    local Joint = State.Joints[NeckJointIndex]
+    if not Joint then
+        return
+    end
+
+    local Root = State.RootPart
+    local NeckCFrame = Joint.Part0.CFrame * Joint.C0
+    local ToTargetX = Target.X - NeckCFrame.Position.X
+    local ToTargetY = Target.Y - NeckCFrame.Position.Y
+    local ToTargetZ = Target.Z - NeckCFrame.Position.Z
+    local Horizontal = Sqrt(ToTargetX * ToTargetX + ToTargetZ * ToTargetZ)
+    local Distance = Sqrt(Horizontal * Horizontal + ToTargetY * ToTargetY)
+    if Distance < 0.05 then
+        return
+    end
+
+    -- Rotate the direction into the root part's frame so yaw/pitch are body-relative.
+    local LocalDirection = Root.CFrame.Rotation:VectorToObjectSpace(Vector3New(ToTargetX, ToTargetY, ToTargetZ))
+    local LocalHorizontal = Sqrt(LocalDirection.X * LocalDirection.X + LocalDirection.Z * LocalDirection.Z)
+
+    local AngleLimit = Config.IkAngleLimitMax
+    local Pitch
+    if LocalHorizontal > 0.0001 then
+        Pitch = Clamp(Atan2(LocalDirection.Y, LocalHorizontal), -AngleLimit, AngleLimit)
+    else
+        -- Target almost directly overhead/underfoot: pitch by sign only, yaw is undefined.
+        Pitch = LocalDirection.Y >= 0.0 and AngleLimit or -AngleLimit
+    end
+    local Yaw = Clamp(Atan2(-LocalDirection.X, -LocalDirection.Z), -AngleLimit, AngleLimit)
+
+    -- Blend (not replace) from whatever clips/IK wrote toward the aim, by the smoothed weight.
+    WritePoseBlend(State.Pose, NeckJointIndex, Pitch, Yaw, 0.0, Applied)
+end
+
+local function UpdateInverseKinematics(State: any, DeltaTime: number): ()
     local Joints = State.Joints
     local RaycastParams = State.RaycastParams
     local Blend = 1.0 - Exp(-Config.IkBlendRate * DeltaTime)
@@ -285,7 +348,11 @@ local function UpdateInverseKinematics(State, DeltaTime)
             if Length1 > 0.0 and Length2 > 0.0 then
                 local HipPivot = (HipJoint.Part0.CFrame * HipJoint.C0).Position
                 local Origin = Vector3New(HipPivot.X, HipPivot.Y + Config.FootRayHeight, HipPivot.Z)
-                local RayDirection = Vector3New(0.0, -Config.FootRayLength, 0.0)
+                local RayDirection = State.FootRayDirection
+                if not RayDirection then
+                    RayDirection = Vector3New(0.0, -Config.FootRayLength, 0.0)
+                    State.FootRayDirection = RayDirection
+                end
                 local Result = Workspace:Raycast(Origin, RayDirection, RaycastParams)
 
                 local Grounded = Result ~= nil
@@ -371,6 +438,7 @@ Kinematics.UpdateWaves = UpdateWaves
 Kinematics.SolveTwoBoneChain = SolveTwoBoneChain
 Kinematics.UpdateInverseKinematics = UpdateInverseKinematics
 Kinematics.ApplyWorldDirection = ApplyWorldDirection
+Kinematics.ApplyLookAt = ApplyLookAt
 
 return Kinematics
 end

@@ -38,7 +38,7 @@ function Suite.Body(Cases)
         "LerpNumber", "LerpVector3", "LerpCFrame", "SlerpCFrame",
         "BezierQuadratic", "BezierCubic", "BezierQuadraticDerivative", "BezierCubicDerivative",
         "RegisterBezierCurve", "GetSamplerCount",
-        "CompileSpline", "SampleSpline",
+        "CompileSpline", "SampleSpline", "GetSplineLength", "SampleSplineAtDistance", "StepSpring",
         "SolveFabrik",
         "Noise1D", "SampleWave", "CompileWave", "SampleCompiledWave",
     }
@@ -49,7 +49,7 @@ function Suite.Body(Cases)
             Missing[#Missing + 1] = Name
         end
     end
-    Kit.Check("exports.allPresent", #Missing == 0, #Missing > 0 and ("missing: " .. table.concat(Missing, ", ")) or "22/22 present")
+    Kit.Check("exports.allPresent", #Missing == 0, #Missing > 0 and ("missing: " .. table.concat(Missing, ", ")) or "27/27 present")
 
     local Phase1Exports = { "CompileWave", "SampleWave", "SampleCompiledWave", "Noise1D", "SolveFabrik" }
     local Phase1Missing = {}
@@ -229,6 +229,71 @@ function Suite.Body(Cases)
     local RepeatA = Math.SampleSpline(Catmull, 1.37)
     local RepeatB = Math.SampleSpline(Catmull, 1.37)
     Kit.Equal("spline.deterministic", RepeatA, RepeatB)
+
+    --=========================================================
+    -- [6b] SPLINE ARC LENGTHS
+    --=========================================================
+
+    -- A natural cubic through collinear points is exactly the line, so chord lengths are exact.
+    local Line = Math.CompileSpline("Natural", { 0.0, 0.5, 1.0 }, { 0.0, 1.5, 3.0 })
+    local LineLength = Math.GetSplineLength(Line)
+    Kit.Near("spline.arcLength.lineTotal", LineLength, (1.0 * 1.0 + 3.0 * 3.0) ^ 0.5, 1e-6, "chord sum of a straight line is exact")
+    Kit.Near("spline.arcLength.lineHalf", Math.SampleSplineAtDistance(Line, LineLength * 0.5), 1.5, 1e-6, "half arc of a straight line is its midpoint")
+    Kit.Near("spline.arcLength.lineStart", Math.SampleSplineAtDistance(Line, 0.0), 0.0, 1e-9)
+    Kit.Near("spline.arcLength.lineEnd", Math.SampleSplineAtDistance(Line, LineLength), 3.0, 1e-9)
+    Kit.Near("spline.arcLength.clampBelow", Math.SampleSplineAtDistance(Line, -10.0), 0.0, 1e-9)
+    Kit.Near("spline.arcLength.clampAbove", Math.SampleSplineAtDistance(Line, LineLength + 10.0), 3.0, 1e-9)
+
+    -- A bulging curve must be longer than its chord end to end.
+    local Bulge = Math.CompileSpline("Natural", { 0.0, 0.5, 1.0 }, { 0.0, 1.0, 0.5 })
+    local Chord = (1.0 * 1.0 + 0.5 * 0.5) ^ 0.5
+    Kit.Check("spline.arcLength.bulgeExceedsChord", Math.GetSplineLength(Bulge) > Chord, "arc > chord for a convex bulge")
+
+    -- Constant-distance sampling of a monotone curve must be non-decreasing.
+    local Mono = Math.CompileSpline("CatmullRom", { 0.0, 0.25, 0.5, 0.75, 1.0 }, { 0.0, 0.2, 0.7, 1.2, 2.0 })
+    local MonoLength = Math.GetSplineLength(Mono)
+    local Previous = Math.SampleSplineAtDistance(Mono, 0.0)
+    local Monotone = true
+    for Step = 1, 20 do
+        local Value = Math.SampleSplineAtDistance(Mono, MonoLength * (Step / 20))
+        if Value < Previous - 1e-9 then
+            Monotone = false
+            break
+        end
+        Previous = Value
+    end
+    Kit.Check("spline.arcLength.monotoneAdvance", Monotone, "equal-distance samples advance monotonically")
+
+    -- Degenerate inputs: empty and single-point splines report zero length safely.
+    Kit.Near("spline.arcLength.emptyLength", Math.GetSplineLength(Empty), 0.0, 0.0)
+    Kit.Near("spline.arcLength.emptySample", Math.SampleSplineAtDistance(Empty, 1.0), 0.0, 0.0)
+
+    --=========================================================
+    -- [6c] SPRINGS
+    --=========================================================
+
+    -- Semi-implicit Euler on a critically damped spring converges to the target without
+    -- exploding, and reports monotonic approach for the first steps.
+    local Spring = { Position = 0.0, Velocity = 0.0 }
+    local First = Math.StepSpring(Spring, 1.0, 100.0, 20.0, 1.0 / 60.0)
+    Kit.Check("spring.firstStepMovesTowardTarget", First > 0.0 and Spring.Velocity > 0.0, "position and velocity increase on the first step")
+    for Step = 1, 600 do
+        Math.StepSpring(Spring, 1.0, 100.0, 20.0, 1.0 / 60.0)
+    end
+    Kit.Near("spring.settlesOnTarget", Spring.Position, 1.0, 1e-3, "critically damped spring converges")
+    Kit.Near("spring.settlesWithZeroVelocity", Spring.Velocity, 0.0, 1e-3)
+
+    -- An under-damped spring overshoots then returns (squash & stretch behaviour).
+    local Bounce = { Position = 0.0, Velocity = -2.0 }
+    local Lowest = 0.0
+    for Step = 1, 240 do
+        local Position = Math.StepSpring(Bounce, 0.0, 170.0, 14.0, 1.0 / 60.0)
+        if Position < Lowest then
+            Lowest = Position
+        end
+    end
+    Kit.Check("spring.underdampedDipsBelowZero", Lowest < -0.05, "landing impulse produces a visible dip")
+    Kit.Near("spring.underdampedRecovers", Bounce.Position, 0.0, 0.05, "under-damped spring decays back to rest")
 
     --=========================================================
     -- [7] FABRIK

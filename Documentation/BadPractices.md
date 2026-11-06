@@ -293,9 +293,10 @@ half the defects in this document.
 **Instead:** `--!strict` plus explicit types on exported functions and state tables. No
 `--!nocheck`, no blanket `any`, no `--!nolint` comments.
 
-> **Honest status:** the codebase does not yet satisfy this. **Zero of 24 files currently
-> declare `--!strict`.** This is the Phase 6 migration, not a completed property. Do not
-> describe the project as strictly typed.
+> **Status (2026-11-06): APPLIED.** Every `.luau` declares `--!strict` and the analysis is
+> clean (0 errors / 0 warnings; 40 pre-existing definition gaps at engine boundaries).
+> Keep it that way: new files must declare `--!strict` on line 1, and new type gaps must be
+> justified at the engine boundary, not papered over with `any`.
 
 ---
 

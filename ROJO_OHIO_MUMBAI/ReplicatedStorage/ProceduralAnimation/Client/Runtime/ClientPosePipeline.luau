@@ -1,3 +1,4 @@
+--!strict
 -- ProceduralAnimation/Client/ClientPosePipeline
 -- The per-frame pose pipeline for one character state: locomotion weight blending, FABRIK chain
 -- solving, wave-driven offset sampling, two-bone IK, clip sampling, the jump state machine,
@@ -9,7 +10,7 @@
 -- through the constructor, so this module never requires the animator back and the require graph
 -- stays acyclic.
 
-return function(Dependencies)
+return function(Dependencies: { [string]: any }): any
 local Config = Dependencies.Config
 local MathLib = Dependencies.MathLib
 local DispatchEvent = Dependencies.DispatchEvent
@@ -86,11 +87,26 @@ local PoseBytesPerJoint = PoseBuffer.PoseBytesPerJoint
 -- Moved verbatim from ProceduralAnimator's [6] section: blends idle/walk/run weights and
 -- advances the three clip phases.
 
-local function UpdateLocomotionWeights(State, DeltaTime)
+local function UpdateLocomotionWeights(State: any, DeltaTime: number): ()
     local Humanoid = State.Humanoid
     local RootPart = State.RootPart
     local Velocity = RootPart.AssemblyLinearVelocity
-    local HorizontalSpeed = Sqrt(Velocity.X * Velocity.X + Velocity.Z * Velocity.Z)
+    local RawSpeed = Sqrt(Velocity.X * Velocity.X + Velocity.Z * Velocity.Z)
+
+    -- Exponential low-pass filter: AssemblyLinearVelocity jitters frame to frame and would
+    -- otherwise shimmer the idle/walk/run blend. Filtered value lives on the state so there
+    -- is no allocation and no cross-character coupling. Rate 0 disables the filter.
+    local FilterRate = Config.VelocityFilterRate
+    local HorizontalSpeed
+    if FilterRate and FilterRate > 0.0 then
+        local Previous = State.FilteredSpeed
+        local Filtered = Previous + (RawSpeed - Previous) * (1.0 - Exp(-FilterRate * DeltaTime))
+        State.FilteredSpeed = Filtered
+        HorizontalSpeed = Filtered
+    else
+        State.FilteredSpeed = RawSpeed
+        HorizontalSpeed = RawSpeed
+    end
 
     if HorizontalSpeed < 0.05 then
         HorizontalSpeed = Humanoid.MoveDirection.Magnitude * Humanoid.WalkSpeed
@@ -130,7 +146,7 @@ end
 
 -- Declared up front because the state machine below closes over it. Assigned in [4] once the
 -- pose-buffer writers exist.
-local SampleClip
+local SampleClip: (Clip: any, Phase: number, Weight: number, PoseBuffer: buffer, EasingOverride: number, State: any?) -> number
 
 -- Jump phases and gestures live in CharacterMotionState; bodies unchanged, state still on State.
 local CharacterMotionState = require(script.Parent.CharacterMotionState)({
@@ -149,7 +165,7 @@ local UpdateGestures = CharacterMotionState.UpdateGestures
 -- [4] PIPELINE
 --=========================================================
 
-local function SampleKeyArray(Phases, Values, KeyCount, Phase, EasingId)
+local function SampleKeyArray(Phases: { number }, Values: { number }, KeyCount: number, Phase: number, EasingId: number): number
     if KeyCount <= 1 then
         return Values[1] or 0.0
     end
@@ -177,7 +193,7 @@ local function SampleKeyArray(Phases, Values, KeyCount, Phase, EasingId)
 end
 
 -- Samples a compiled clip additively into PoseBuffer and returns the scaled root offset.
-function SampleClip(Clip, Phase, Weight, PoseBuffer, EasingOverride, State)
+function SampleClip(Clip: any, Phase: number, Weight: number, PoseBuffer: buffer, EasingOverride: number, State: any?): number
     if Weight <= 0.001 then
         return 0.0
     end
@@ -236,7 +252,7 @@ end
 -- [9] BLENDING
 --=========================================================
 
-local function BlendJumpOverlay(State)
+local function BlendJumpOverlay(State: any): ()
     local Weight = State.JumpWeight
     if Weight <= 0.001 then
         return
@@ -254,13 +270,14 @@ local function BlendJumpOverlay(State)
     end
 end
 
-local function ApplyPose(State, DeltaTime)
+local function ApplyPose(State: any, DeltaTime: number): ()
     local Joints = State.Joints
     local Pose = State.Pose
     local Smooth = State.Smooth
     local Applied = State.Applied
     local Factor = MathLib.SmoothFactor(State.SmoothRate, DeltaTime)
     local RootOffsetY = State.RootOffsetY * State.LocomotionWeight
+    local JointAmplitude = State.JointAmplitude
 
     for Joint = 1, MaxJoints do
         local Motor = Joints[Joint]
@@ -269,6 +286,16 @@ local function ApplyPose(State, DeltaTime)
             local TargetX = BufferReadF32(Pose, Offset)
             local TargetY = BufferReadF32(Pose, Offset + 4)
             local TargetZ = BufferReadF32(Pose, Offset + 8)
+
+            -- Per-joint amplitude (1.0 everywhere by default): scales the desired pose angles
+            -- before smoothing, so gains/damps stay well behaved. Never exceeds 3x by
+            -- construction (SetJointAmplitude clamps); a read + compare when unset.
+            local Amplitude = JointAmplitude[Joint]
+            if Amplitude ~= 1.0 then
+                TargetX = TargetX * Amplitude
+                TargetY = TargetY * Amplitude
+                TargetZ = TargetZ * Amplitude
+            end
 
             local CurrentX = BufferReadF32(Smooth, Offset)
             local CurrentY = BufferReadF32(Smooth, Offset + 4)
@@ -286,7 +313,12 @@ local function ApplyPose(State, DeltaTime)
             local Magnitude = Abs(NewX) + Abs(NewY) + Abs(NewZ)
             if Magnitude > 0.0002 then
                 if Joint == RootJointIndex then
-                    Motor.Transform = CFrameNew(0.0, RootOffsetY, 0.0) * CFrameAngles(NewX, NewY, NewZ)
+                    -- Fast path: composed matrix product only when the vertical offset is live.
+                    if Abs(RootOffsetY) > 0.0002 then
+                        Motor.Transform = CFrameNew(0.0, RootOffsetY, 0.0) * CFrameAngles(NewX, NewY, NewZ)
+                    else
+                        Motor.Transform = CFrameAngles(NewX, NewY, NewZ)
+                    end
                 else
                     Motor.Transform = CFrameAngles(NewX, NewY, NewZ)
                 end
@@ -307,17 +339,35 @@ end
 -- [10] UPDATE LOOP
 --=========================================================
 
-local function ComputeRootOffset(State)
+local function ComputeRootOffset(State: any, DeltaTime: number): number
     local Offset = SampleClip(IdleClip, State.IdlePhase, State.IdleWeight, State.Pose, 0, State)
         + SampleClip(WalkClip, State.WalkPhase, State.WalkWeight, State.Pose, 0, State)
         + SampleClip(RunClip, State.RunPhase, State.RunWeight, State.Pose, 0, State)
     if IsPreviewMode() then
+        State.SquashSpring.Position = 0.0
+        State.SquashSpring.Velocity = 0.0
         return 0.0
     end
-    return Offset + State.JumpOffset * State.JumpWeight
+
+    -- Squash & stretch: critically-damped-ish spring anchored at zero. The landing impulse in
+    -- CharacterMotionState is what excites it; everywhere else it decays back to neutral.
+    local SquashStretch = Config.SquashStretch
+    local SquashOffset = 0.0
+    if SquashStretch and SquashStretch.Enabled then
+        local Step = DeltaTime
+        if Step > 0.0667 then
+            Step = 0.0667
+        end
+        SquashOffset = MathLib.StepSpring(State.SquashSpring, 0.0, SquashStretch.Stiffness, SquashStretch.Damping, Step)
+    elseif State.SquashSpring then
+        State.SquashSpring.Position = 0.0
+        State.SquashSpring.Velocity = 0.0
+    end
+
+    return Offset + State.JumpOffset * State.JumpWeight + SquashOffset
 end
 
-local function UpdateLocalCharacter(State, DeltaTime)
+local function UpdateLocalCharacter(State: any, DeltaTime: number): ()
     BufferFill(State.Pose, 0, PoseBufferLength, 0)
     BufferFill(State.Overlay, 0, PoseBufferLength, 0)
 
@@ -326,7 +376,7 @@ local function UpdateLocalCharacter(State, DeltaTime)
     if ProfilingEnabled then
         ProfileBegin("PA_ClipPlayback")
     end
-    State.RootOffsetY = ComputeRootOffset(State)
+    State.RootOffsetY = ComputeRootOffset(State, DeltaTime)
     UpdateJump(State, DeltaTime)
     BlendJumpOverlay(State)
     UpdateGestures(State, DeltaTime)
@@ -379,7 +429,7 @@ local function UpdateLocalCharacter(State, DeltaTime)
     end
 end
 
-local function UpdateRemoteCharacter(State, DeltaTime)
+local function UpdateRemoteCharacter(State: any, DeltaTime: number): ()
     if State.Player == nil then
         return
     end
