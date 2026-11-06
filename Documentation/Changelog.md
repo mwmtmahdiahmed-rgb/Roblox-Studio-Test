@@ -367,6 +367,15 @@ moved under the correct `## 1.0.5` heading (entry text unchanged) and the duplic
 
 ---
 
+## 1.1.10
+
+### Docs re-synced to merged main (4bfc7e7, PR #9).
+
+- **Affected:** Documentation/Memory.md, ROJO_OHIO_MUMBAI/ServerStorage/ZeroScript/Memory.luau, Documentation/Changelog.md, ROJO_OHIO_MUMBAI/ReplicatedStorage/ProceduralAnimation/Shared/Changelog.luau
+- **Reason:** Same post-merge re-sync convention as after PRs #7 and #8: the living memory docs must name the newest merge commit (4bfc7e7, PR #9, CI run 42181483389) and the branch they were re-verified on. No code, harness, or framework behaviour changed; gate unchanged (PASS 437 | FAIL 0); Config.Version stays 1.1.0.
+
+---
+
 ## Entry format
 
 ```

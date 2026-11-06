@@ -362,6 +362,12 @@ Changelog.Entries = {
         File = "Documentation/Memory.md, ROJO_OHIO_MUMBAI/ServerStorage/ZeroScript/Memory.luau, Documentation/Changelog.md, ROJO_OHIO_MUMBAI/ReplicatedStorage/ProceduralAnimation/Shared/Changelog.luau",
         Reason = "Post-merge re-sync, same convention as after PR #7: the memory docs must name the merge commit (3ca2731, PR #8, CI run 42178478823) and the branch they were re-verified on, otherwise a cold-start engineer is told to look at a stale main tip. No code, harness, or framework behaviour changed; gate unchanged (PASS 437 | FAIL 0); Config.Version stays 1.1.0.",
     },
+    {
+        Version = "1.1.10",
+        Description = "Docs re-synced to merged main (4bfc7e7, PR #9): Memory.md and ZeroScript/Memory.luau point at current main; PRs #8/#9 merges and CI runs recorded.",
+        File = "Documentation/Memory.md, ROJO_OHIO_MUMBAI/ServerStorage/ZeroScript/Memory.luau, Documentation/Changelog.md, ROJO_OHIO_MUMBAI/ReplicatedStorage/ProceduralAnimation/Shared/Changelog.luau",
+        Reason = "Same post-merge re-sync convention as after PRs #7 and #8: the living memory docs must name the newest merge commit (4bfc7e7, PR #9, CI run 42181483389) and the branch they were re-verified on. No code, harness, or framework behaviour changed; gate unchanged (PASS 437 | FAIL 0); Config.Version stays 1.1.0.",
+    },
 }
 
 --=========================================================
