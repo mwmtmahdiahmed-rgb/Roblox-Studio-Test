@@ -412,6 +412,12 @@ list, previously only 4 of 7 chunks — `04-testkit.luau` was silently uncompile
   PR and on `main` (run `42178478823`).
   Docs re-sync (changelog 1.1.9) reached `main` as `4bfc7e7` via PR #9 (2026-11-06T07:31Z); CI green on the
   PR and on `main` (run `42181483389`).
+- **Root `README.md` (2026-11-06, 1.1.11)** — was a bare `# Roblox-Studio-Test` heading; now documents the
+  layout, the offline gate, invariants (frozen packet layout, 500-line/strict rules) and limitations;
+  all internal doc links verified. The four `.mjs` files audited as fully load-bearing — **no removable
+  JavaScript**; single pinned dependency `@luau-rs/luau` 0.739.0; `bench.mjs` run on this machine:
+  SampleSpline 637 ns/op, SampleCompiledWave 1453 ns/op, Ease(1) 218 ns/op, Compact early-out 68 ns vs
+  1024 ns reference (machine-dependent, not committed anywhere).
 - **`Tools/verify/changelog-check.mjs` (2026-11-06, 1.1.8)** — permanent parity gate between the two
   changelog copies; asserts no duplicate version headers, ascending order, non-empty sections,
   identical version sets and equal per-version entry counts (56/56). Wired into the CI gate and

@@ -368,6 +368,12 @@ Changelog.Entries = {
         File = "Documentation/Memory.md, ROJO_OHIO_MUMBAI/ServerStorage/ZeroScript/Memory.luau, Documentation/Changelog.md, ROJO_OHIO_MUMBAI/ReplicatedStorage/ProceduralAnimation/Shared/Changelog.luau",
         Reason = "Same post-merge re-sync convention as after PRs #7 and #8: the living memory docs must name the newest merge commit (4bfc7e7, PR #9, CI run 42181483389) and the branch they were re-verified on. No code, harness, or framework behaviour changed; gate unchanged (PASS 437 | FAIL 0); Config.Version stays 1.1.0.",
     },
+    {
+        Version = "1.1.11",
+        Description = "Whole-repo audit under the complete-optimization directive: root README.md written (was a bare heading); JavaScript tooling audited — no removable JavaScript; bench.mjs evidence recorded on-machine.",
+        File = "README.md (new), Documentation/Memory.md, Documentation/Changelog.md, ROJO_OHIO_MUMBAI/ReplicatedStorage/ProceduralAnimation/Shared/Changelog.luau",
+        Reason = "The repository's public landing page was an empty stub despite the project being documentation-first; the four .mjs files audited as fully load-bearing (verify/rojo-check/changelog-check wired into CI, bench documented in README/Maintenance), one pinned dependency, no unused code found; no Luau, harness, or packet-layout change; gate re-run unchanged (PASS 437 | FAIL 0); all README internal links verified. Config.Version stays 1.1.0.",
+    },
 }
 
 --=========================================================

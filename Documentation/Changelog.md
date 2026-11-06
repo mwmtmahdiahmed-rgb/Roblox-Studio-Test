@@ -376,6 +376,15 @@ moved under the correct `## 1.0.5` heading (entry text unchanged) and the duplic
 
 ---
 
+## 1.1.11
+
+### Whole-repo audit: root README.md written; JavaScript audited as load-bearing.
+
+- **Affected:** README.md (new), Documentation/Memory.md, Documentation/Changelog.md, ROJO_OHIO_MUMBAI/ReplicatedStorage/ProceduralAnimation/Shared/Changelog.luau
+- **Reason:** The repository's public landing page was an empty stub despite the project being documentation-first; the four .mjs files audited as fully load-bearing (verify/rojo-check/changelog-check wired into CI, bench documented in README/Maintenance), one pinned dependency, no unused code found; no Luau, harness, or packet-layout change; gate re-run unchanged (PASS 437 | FAIL 0); all README internal links verified. Config.Version stays 1.1.0.
+
+---
+
 ## Entry format
 
 ```
