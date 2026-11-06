@@ -1,0 +1,14 @@
+{
+  "name": "procedural-animation-verify",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Offline Luau verification harness for the ProceduralAnimation framework (no Roblox Studio, no playtest).",
+  "scripts": {
+    "verify": "node verify.mjs",
+    "verify:report": "node verify.mjs --report"
+  },
+  "dependencies": {
+    "@luau-rs/luau": "0.739.0"
+  }
+}

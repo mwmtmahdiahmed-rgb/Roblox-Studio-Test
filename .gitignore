@@ -1,0 +1,8 @@
+# Verification harness
+Tools/verify/node_modules/
+Tools/verify/out/
+Tools/verify/dbg*.mjs
+
+# Editor / OS noise
+.DS_Store
+*.log

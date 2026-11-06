@@ -406,6 +406,13 @@ function MathLib.SlerpCFrame(From, To, Alpha)
 
     local ResultW, ResultX, ResultY, ResultZ
 
+    -- Translation interpolates linearly along with the rotation. The rotation result is rebuilt
+    -- from a blended position, so a caller that only wants the rotation should use
+    -- CFrame:Lerp; every shipped call site (pose smoothing, blending) expects both.
+    local PositionX = From.X + (To.X - From.X) * Alpha
+    local PositionY = From.Y + (To.Y - From.Y) * Alpha
+    local PositionZ = From.Z + (To.Z - From.Z) * Alpha
+
     if Dot > 0.9995 then
         -- Small-angle linear fallback: slerp degenerates numerically here, and a normalised
         -- lerp is both cheaper and stable.
@@ -432,7 +439,7 @@ function MathLib.SlerpCFrame(From, To, Alpha)
         ResultZ = FromZ * FromScale + ToZ * ToScale
     end
 
-    return CFrameFromQuaternion(From.X, From.Y, From.Z, ResultW, ResultX, ResultY, ResultZ)
+    return CFrameFromQuaternion(PositionX, PositionY, PositionZ, ResultW, ResultX, ResultY, ResultZ)
 end
 
 function MathLib.LerpCFrame(From, To, Alpha)
@@ -445,6 +452,8 @@ function MathLib.LerpCFrame(From, To, Alpha)
     -- CFrame:Lerp is a C++ shortest-path quaternion slerp, so it is the fastest correct option
     -- for arbitrary rotations. Only when the two rotations are nearly identical do we use the
     -- manual normalised-lerp fallback, which skips the acos/sin setup entirely.
+    -- SlerpCFrame interpolates translation as well, so both branches behave identically with
+    -- respect to position (see the lerpCFrame.translation regression guard).
     local Dot = From.XVector:Dot(To.XVector)
         + From.YVector:Dot(To.YVector)
         + From.ZVector:Dot(To.ZVector)
