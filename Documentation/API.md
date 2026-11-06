@@ -84,8 +84,8 @@ Read-only tables. The most important groups:
   R15 joint id ↔ name mapping (+ Chest optional via `OptionalJoints` / `RequireOptionalJoints`).
 - **Packet**: `Packet`, `SendRate`, `JitterBufferDepth`, `MaxJoints` (=16).
 - **Locomotion/jump**: `Locomotion`, `Jump`, `Gestures`, `MaxGestures`.
-- **IK**: `IkAngleLimitMin/Max`, `IkReachClamp`, `IkBlendRate`, `FootRayHeight`,
-  `FootRayLength`, `FootAlignWeight`, `LodIkDistance`, `LodDistance`.
+- **IK**: `IkAngleLimitMin`, `IkAngleLimitMax`, `IkReachClamp`, `IkBlendRate`,
+  `FootRayHeight`, `FootRayLength`, `FootAlignWeight`, `LodIkDistance`, `LodDistance`.
 - **Waves/FABRIK**: `Waves`, `FabrikChains`.
 - **Events**: `EventId`, `MaxEventId`.
 - **Compiled output**: `Compiled` (clips/waves/smoothed data), `Clips`, `EasingId`.
@@ -99,8 +99,7 @@ Read-only tables. The most important groups:
 
 ## 5. `NetworkConstants` — the frozen wire layout in code (46 exports)
 
-Grouped: buffer helper aliases (`BufferLen`, `BufferCreate`, `BufferCopy`, `BufferReadU8/U16/
-U32/I16/F32`, `BufferWrite*`), layout offsets (`HeaderOffset`, `SequenceOffset`, `TickOffset`,
+Grouped: buffer helper aliases (`Abs`-style thin wrappers used by the decoder — `BufferLen`, `BufferCreate`, `BufferCopy`, `BufferReadU8`, `BufferReadU16`, `BufferReadU32`, `BufferReadI16`, `BufferReadF32`, `BufferWriteU8`, `BufferWriteU16`, `BufferWriteU32`, `BufferWriteI16`, `BufferWriteF32`, `ReadClampedI16`, `WriteClampedI16`), layout offsets (`HeaderOffset`, `SequenceOffset`, `TickOffset`,
 `RootPositionOffset`, `RootVelocityOffset`, `JointCountOffset`, `JointDataOffset`,
 `BytesPerJoint`=6, `PoseFloatLength`, `SendBufferSize`=116, `SequenceModulus`), quantization
 (`PositionScale`, `PositionInverse`, `VelocityScale`, `AngleQuantization`,
