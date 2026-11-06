@@ -40,6 +40,8 @@ Do not create empty folders; do not leave scaffolding files.
 
 ## 3. Adding a public API export (safe, additive)
 
+The full current inventory with signatures lives in `API.md` — update it in the same change.
+
 1. Add the export to the module. Keep the signature documented (full parameter and return
    annotations, `--!strict`).
 2. Additions are **reported, not failed** by the api suite. Do NOT run

@@ -103,6 +103,13 @@ all lifecycle logic and expose `Destroy`.
 All files declare `--!strict` and are analysed clean (0 errors / 0 warnings; 40 pre-existing
 "definition gaps" on engine-typed edges, documented in §6). Every script ≤ 500 lines.
 
+### Documentation (`Documentation/`)
+
+`Memory.md` (this file), `API.md` (public API reference), `Maintenance.md` (Phase 10 maintenance),
+`Audit.md` (Phase 9 regression audit), `SyntaxReference.md`, `GoodPractices.md`, `BadPractices.md`,
+`Changelog.md` (mirror of `Shared/Changelog.luau`). The harness does not install these; they are
+for humans.
+
 ---
 
 ## 3. Conventions
@@ -143,6 +150,8 @@ Spec exports: `CompileWave`, `SampleWave`, `SampleCompiledWave`, `Noise1D`, `Sol
 
 `Init`, `IsReady`, `BindLocal`, `FireBus`, `SendPose`, `SendEvent`, `RegisterPlayer`,
 `UnregisterPlayer`, `SampleRemotePose`, `HasRemotePose`, `ReleaseRemotePose` + baseline entry.
+
+> Full signature-and-semantics reference for every public export: **`API.md`**.
 
 ### ProceduralAnimator — 16 exports
 
