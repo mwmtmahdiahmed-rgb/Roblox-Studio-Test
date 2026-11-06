@@ -374,6 +374,12 @@ Changelog.Entries = {
         File = "README.md (new), Documentation/Memory.md, Documentation/Changelog.md, ROJO_OHIO_MUMBAI/ReplicatedStorage/ProceduralAnimation/Shared/Changelog.luau",
         Reason = "The repository's public landing page was an empty stub despite the project being documentation-first; the four .mjs files audited as fully load-bearing (verify/rojo-check/changelog-check wired into CI, bench documented in README/Maintenance), one pinned dependency, no unused code found; no Luau, harness, or packet-layout change; gate re-run unchanged (PASS 437 | FAIL 0); all README internal links verified. Config.Version stays 1.1.0.",
     },
+    {
+        Version = "1.1.12",
+        Description = "Deep audit addendum under the whole-repo optimization directive: evidence sweeps clean; server relay path and lifecycle verified by inspection; findings (no rate limiting, EventRemote gate) recorded but deliberately not applied.",
+        File = "Documentation/Audit.md, Documentation/Memory.md, Documentation/Changelog.md, ROJO_OHIO_MUMBAI/ReplicatedStorage/ProceduralAnimation/Shared/Changelog.luau",
+        Reason = "Directive pass (Phase 0 discovery + Phase 8 audit): every candidate micro-optimization or behavioral change found either risked the frozen packet format/API or could not be verified honestly (the offline harness's mocked clock is frozen at 0, so a time-based relay throttle would silently drop all test traffic). Findings are recorded in Audit.md; no framework or harness code changed; gate unchanged (PASS 437 | FAIL 0); Config.Version stays 1.1.0.",
+    },
 }
 
 --=========================================================

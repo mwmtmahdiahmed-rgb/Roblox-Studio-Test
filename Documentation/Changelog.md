@@ -385,6 +385,15 @@ moved under the correct `## 1.0.5` heading (entry text unchanged) and the duplic
 
 ---
 
+## 1.1.12
+
+### Deep audit addendum (Audit.md): sweeps clean; relay rate limiting recorded as an open decision, not applied.
+
+- **Affected:** Documentation/Audit.md, Documentation/Memory.md, Documentation/Changelog.md, ROJO_OHIO_MUMBAI/ReplicatedStorage/ProceduralAnimation/Shared/Changelog.luau
+- **Reason:** Directive pass (Phase 0 discovery + Phase 8 audit): every candidate micro-optimization or behavioral change found either risked the frozen packet format/API or could not be verified honestly (the offline harness's mocked clock is frozen at 0, so a time-based relay throttle would silently drop all test traffic). Findings are recorded in Audit.md; no framework or harness code changed; gate unchanged (PASS 437 | FAIL 0); Config.Version stays 1.1.0.
+
+---
+
 ## Entry format
 
 ```

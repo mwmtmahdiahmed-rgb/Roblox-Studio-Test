@@ -98,3 +98,41 @@ in moved with it: the `UpperTorso` fix now resides in `Tools/verify/src/02b-mock
 deliberately not rewritten; at the time of this addendum the gate reads **PASS 437 | FAIL 0**
 (28/28 compile, Analysis 0 errors / 0 warnings / 40 definition gaps). No framework behaviour
 changed since the audit.
+## Addendum — 2026-11-06: deep audit under the whole-repo optimization directive
+
+Evidence pass over the entire repository. No source changed; this entry records what was checked
+and the findings that were deliberately **not** applied.
+
+Clean sweeps (all verified by grep/inspection, 2026-11-06):
+
+- Zero TODO/FIXME/HACK markers; zero metatables/`__index`/OOP patterns; zero `task.wait`/`wait`.
+- Exactly one `Instance.new` in the framework (init-time remote creation, `NetworkConstants`);
+  no repeated `GetDescendants`/`GetChildren`; no per-frame table/instance allocation hot spots found.
+- Server relay path already hardened: packet type/length checks, magic byte, registered-player
+  gate, sequence dedupe (drops stale/out-of-order with counters), `JointCount x BytesPerJoint`
+  cross-validation against actual buffer size (prevents over-read in `ValidateAngles` and all
+  downstream readers), NaN and +/-`MaxAngleRadians` validation, root-teleport threshold
+  (`Config.SanityRootThreshold`, warn-once).
+- `Connections` tracker: drains in reverse order, `pcall`-guarded disconnects, idempotent
+  `DisconnectAll`. `Animator.Stop()` disconnects `Heartbeat` (the 1.x connection-leak fix is
+  present and documented in-source); `Animator.Destroy()` is terminal; `Init` is one-shot.
+- JavaScript/TypeScript: exactly four `.mjs` files, all load-bearing (verify/rojo-check/
+  changelog-check wired into CI; bench documented in README/Maintenance); no TypeScript exists;
+  one pinned dependency (`@luau-rs/luau` 0.739.0). No unused code or dependencies found; nothing
+  to remove without breaking required tooling.
+
+Findings deliberately **not** applied:
+
+1. **No server-side rate limiting** on `PoseRemote`/`EventRemote` relay paths. A flooding sender
+   is bounded only by engine throttling plus the drop counters; each accepted packet costs
+   O(other players) relay fires. The offline harness mocks the clock as frozen at 0, so a naive
+   time-based throttle would drop every packet in tests; a correct implementation needs either an
+   authorized Play-mode session or a dedicated clock-aware harness suite with flood cases.
+   Additionally, the `EventRemote` relay (`OnServerEvent`) lacks the registered-player gate that
+   `OnServerPose` has. Both are additive-only, server-side, no packet-format change.
+2. **40 definition gaps** remain by design (partial `roblox-definitions.luau`); closing them needs
+   the full engine definitions and is out of scope.
+3. R6 deferred; AnimationConstraint rig decision open; `rojo build`/publish unrun; Studio↔GitHub
+   parity by inspection only.
+
+Gate at this addendum: **PASS 437 | FAIL 0** (28/28 compile; Analysis 0 errors / 0 warnings / 40 gaps).
