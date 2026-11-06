@@ -7,8 +7,8 @@
 local Config = {}
 local Private = {}
 
-require(script.Parent.AnimationConfigData)(Config, Private)
-require(script.Parent.AnimationConfigMotion)(Config, Private)
-require(script.Parent.AnimationConfigCompile)(Config, Private)
+require(script.Parent.Config.Data.ConfigData)(Config, Private)
+require(script.Parent.Config.Data.ConfigMotion)(Config, Private)
+require(script.Parent.Config.Compile.ConfigCompile)(Config, Private)
 
 return Config

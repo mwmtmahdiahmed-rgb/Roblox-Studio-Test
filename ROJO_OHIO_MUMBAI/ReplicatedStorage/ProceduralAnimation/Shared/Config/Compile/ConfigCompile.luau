@@ -65,7 +65,7 @@ local CompiledGestures = {
 }
 
 -- Compile wave presets for fast sampling.
-local MathLib = require(script.Parent.AnimationMath)
+local MathLib = require(script.Parent.Parent.Parent.AnimationMath)
 local CompiledWaves = {}
 -- Sorted names so the compiled table has a fixed, reproducible ordering independent of how
 -- the authoring table happens to hash. Consumers iterate WaveOrder instead of pairs(), which

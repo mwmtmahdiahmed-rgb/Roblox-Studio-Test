@@ -169,6 +169,18 @@ Changelog.Entries = {
         File = "Tools/verify/LuaTests/06-api-suite.luau",
         Reason = "Appending a Changelog entry changed the fingerprint of Changelog.Entries and was reported as an API break. Appending a record is not a contract change; losing or reshaping the record type is, and that is still caught.",
     },
+    {
+        Version = "1.0.3",
+        Description = "Reorganized into the target folder hierarchy: Client/Runtime, Shared/Config/{Data,Compile}, Shared/Math/{Core,Curves,IK,Waves}, Shared/Networking/{Constants,Receive}.",
+        File = "ProceduralAnimation (tree), AnimationConfig, AnimationMath, AnimationNetwork, ProceduralAnimator, PoseBuffer, NetworkConstants, NetworkReceive, ConfigCompile, client bootstrapper",
+        Reason = "Phase 3 hierarchy. Modules were relocated with git mv so history is preserved, and only require() paths changed; no algorithm was touched. Client/Bootstrap and Server/ were deliberately not created because the bootstrappers must stay in StarterPlayerScripts and ServerScriptService to execute at all, and empty folders are prohibited.",
+    },
+    {
+        Version = "1.0.3",
+        Description = "Created Documentation/ with Memory, GoodPractices, BadPractices, SyntaxReference and Changelog.",
+        File = "Documentation/*",
+        Reason = "Priority 3 requires these before any coding session. They are derived from the actual source, not generated boilerplate; two SyntaxReference claims (buffer # length, math.round) were empirically corrected after testing them in the harness VM.",
+    },
 }
 
 --=========================================================

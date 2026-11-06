@@ -8,8 +8,9 @@ local Player = Players.LocalPlayer
 
 local Folder = ReplicatedStorage:WaitForChild("ProceduralAnimation", 15)
 local Client = Folder:WaitForChild("Client", 15)
+local Runtime = Client:WaitForChild("Runtime", 15)
 
-local Animator = require(Client.ProceduralAnimator)
+local Animator = require(Runtime.ProceduralAnimator)
 
 Animator.Init()
 

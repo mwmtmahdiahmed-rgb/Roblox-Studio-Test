@@ -26,9 +26,9 @@ local PUBLIC_MODULES = {
     "ReplicatedStorage.ProceduralAnimation.Shared.AnimationConfig",
     "ReplicatedStorage.ProceduralAnimation.Shared.AnimationMath",
     "ReplicatedStorage.ProceduralAnimation.Shared.AnimationNetwork",
-    "ReplicatedStorage.ProceduralAnimation.Shared.AnimationNetworkConstants",
+    "ReplicatedStorage.ProceduralAnimation.Shared.Networking.Constants.NetworkConstants",
     "ReplicatedStorage.ProceduralAnimation.Shared.Changelog",
-    "ReplicatedStorage.ProceduralAnimation.Client.ProceduralAnimator",
+    "ReplicatedStorage.ProceduralAnimation.Client.Runtime.ProceduralAnimator",
 }
 
 -- Exports that are private implementation detail (a factory's scratch table, live state) and
@@ -110,6 +110,11 @@ end
 
 local function ModuleShortName(Path)
     local Last = string.match(Path, "([^.]+)$")
+    -- Keep the historic key for the one module that was renamed when it moved into a subfolder,
+    -- so the recorded baseline stays comparable across the reorganization.
+    if Last == "NetworkConstants" then
+        return "AnimationNetworkConstants"
+    end
     return Last or Path
 end
 

@@ -21,14 +21,14 @@ local Players = game:GetService("Players")
 
 local Config = require(script.Parent.AnimationConfig)
 local Changelog = require(script.Parent.Changelog)
-local Constants = require(script.Parent.AnimationNetworkConstants)
+local Constants = require(script.Parent.Networking.Constants.NetworkConstants)
 
 local Network = {}
 local Private = {}
 
 -- The receive module writes HasRemotePose, SampleRemotePose and ReleaseRemotePose
 -- straight onto Network and returns OnClientPose through Private.
-require(script.Parent.AnimationNetworkReceive)(Network, Private)
+require(script.Parent.Networking.Receive.NetworkReceive)(Network, Private)
 local OnClientPose = Private.OnClientPose
 
 local IsServer = Constants.IsServer

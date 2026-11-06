@@ -2,7 +2,7 @@
     Tools/verify/LuaTests/03-network-suite.luau
 
     Behavioural tests for the networking layer:
-      AnimationNetwork, AnimationNetworkConstants, AnimationNetworkReceive.
+      AnimationNetwork, NetworkConstants, NetworkReceive.
 
     The suite runs the module twice inside one VM: once in server mode to exercise the send
     path, validation and relay, then again in client mode to exercise the jitter buffer and
@@ -28,9 +28,9 @@ local function FreshServer()
     Env.SetServerMode(true)
     Env.PurgeCache(NETWORK_PATH)
     Env.PurgeCache(RECEIVE_PATH)
-    Env.PurgeCache(SHARED .. "AnimationNetworkConstants")
+    Env.PurgeCache(SHARED .. "Networking.Constants.NetworkConstants")
     Network = Env.Require(NETWORK_PATH)
-    Constants = Env.Require(SHARED .. "AnimationNetworkConstants")
+    Constants = Env.Require(SHARED .. "Networking.Constants.NetworkConstants")
     Config = Env.Require(SHARED .. "AnimationConfig")
     Network.Init()
     return Network
@@ -40,15 +40,15 @@ local function FreshClient()
     Env.SetServerMode(false)
     Env.PurgeCache(NETWORK_PATH)
     Env.PurgeCache(RECEIVE_PATH)
-    Env.PurgeCache(SHARED .. "AnimationNetworkConstants")
+    Env.PurgeCache(SHARED .. "Networking.Constants.NetworkConstants")
     Network = Env.Require(NETWORK_PATH)
-    Constants = Env.Require(SHARED .. "AnimationNetworkConstants")
+    Constants = Env.Require(SHARED .. "Networking.Constants.NetworkConstants")
     return Network
 end
 
 function Suite.Reset()
     Config = Env.Require(SHARED .. "AnimationConfig")
-    Constants = Env.Require(SHARED .. "AnimationNetworkConstants")
+    Constants = Env.Require(SHARED .. "Networking.Constants.NetworkConstants")
     FreshServer()
 end
 

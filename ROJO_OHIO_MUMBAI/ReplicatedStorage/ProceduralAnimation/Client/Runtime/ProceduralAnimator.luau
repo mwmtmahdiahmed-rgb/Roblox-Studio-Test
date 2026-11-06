@@ -5,10 +5,10 @@ local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 
-local Config = require(script.Parent.Parent.Shared.AnimationConfig)
-local MathLib = require(script.Parent.Parent.Shared.AnimationMath)
-local Network = require(script.Parent.Parent.Shared.AnimationNetwork)
-local Changelog = require(script.Parent.Parent.Shared.Changelog)
+local Config = require(script.Parent.Parent.Parent.Shared.AnimationConfig)
+local MathLib = require(script.Parent.Parent.Parent.Shared.AnimationMath)
+local Network = require(script.Parent.Parent.Parent.Shared.AnimationNetwork)
+local Changelog = require(script.Parent.Parent.Parent.Shared.Changelog)
 
 
 local Animator = {}

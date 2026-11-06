@@ -5,9 +5,9 @@
 -- SampleRemotePose and ReleaseRemotePose land on the public surface unchanged, and it
 -- hands OnClientPose back through Private so ConnectClient can subscribe to it.
 
-local Config = require(script.Parent.AnimationConfig)
-local MathLib = require(script.Parent.AnimationMath)
-local Constants = require(script.Parent.AnimationNetworkConstants)
+local Config = require(script.Parent.Parent.Parent.AnimationConfig)
+local MathLib = require(script.Parent.Parent.Parent.AnimationMath)
+local Constants = require(script.Parent.Parent.Constants.NetworkConstants)
 
 local BufferCreate = Constants.BufferCreate
 local BufferLen = Constants.BufferLen
