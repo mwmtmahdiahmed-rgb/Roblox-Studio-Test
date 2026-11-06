@@ -119,6 +119,8 @@ local function RunSuiteByName(Name)
         return ToJson({ Name = Name, Cases = { { Name = "suite lookup", Status = "BLOCKED", Detail = "unknown suite" } } })
     end
     local Results = { Name = Name, Cases = {} }
+    -- Honour the suite's Reset hook. It was declared and documented but never invoked, so a
+    -- suite that relied on it silently ran against the previous suite's world.
     if Suite.Reset then
         local Ok, Err = pcall(Suite.Reset)
         if not Ok then

@@ -181,6 +181,24 @@ Changelog.Entries = {
         File = "Documentation/*",
         Reason = "Priority 3 requires these before any coding session. They are derived from the actual source, not generated boilerplate; two SyntaxReference claims (buffer # length, math.round) were empirically corrected after testing them in the harness VM.",
     },
+    {
+        Version = "1.0.4",
+        Description = "Added Shared/Utilities/Connections and a real Destroy/Shutdown lifecycle to the client runtime, the network layer and both bootstrappers.",
+        File = "Utilities/Connections, ProceduralAnimator, PlayerTracker, AnimationNetwork, ProceduralAnimationClient, ProceduralAnimationServer",
+        Reason = "Phase 4. Animator.Init never stored its Players connections and TrackPlayer never stored its per-player connections, so nothing could ever be disconnected; there was no Destroy at all on either side. Connections are now recorded in trackers and released by Destroy/Shutdown, which are idempotent and terminal.",
+    },
+    {
+        Version = "1.0.4",
+        Description = "Extracted PlayerTracker from ProceduralAnimator.",
+        File = "PlayerTracker",
+        Reason = "Keeps the animator under 500 lines after the lifecycle work, and puts every player-level connection decision in one auditable file.",
+    },
+    {
+        Version = "1.0.4",
+        Description = "Verification harness: Suite.Reset was declared but never invoked; ResetModuleCache dropped modules without running their teardown; script lifecycle handles were discarded.",
+        File = "Tools/verify/src/00-runner.luau, src/03-env.luau, src/02-mock-services.luau",
+        Reason = "Three harness defects that made lifecycle tests unreliable. Suites silently ran against the previous suite's world, and connections leaked across suites. ResetModuleCache now runs each cached module's Destroy/Shutdown first, and RunScriptFile retains returned handles so teardown can release them.",
+    },
 }
 
 --=========================================================

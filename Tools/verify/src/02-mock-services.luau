@@ -534,6 +534,15 @@ local function RemovePlayer(Player)
     SignalClass.Fire(Players.PlayerRemoving, Player)
 end
 
+-- Removes every player WITHOUT firing PlayerRemoving. Test suites use this between cases so
+-- listeners installed by a previous suite are not re-entered; real code paths still use
+-- RemovePlayer, which fires the signal exactly as Studio does.
+local function ClearPlayersSilently()
+    for Index = #PlayerStore, 1, -1 do
+        PlayerStore[Index] = nil
+    end
+end
+
 local function SetCharacter(Player, Character)
     if Player.Character then
         local Previous = Player.Character
@@ -595,6 +604,7 @@ Game.__Mock = {
     SetServerMode = SetServerMode,
     SetRaycastHandler = SetRaycastHandler,
     CreateR15Character = CreateR15Character,
+    ClearPlayersSilently = ClearPlayersSilently,
     Humanoid = Humanoid,
     CreatePlayer = CreatePlayer,
     AddPlayer = AddPlayer,

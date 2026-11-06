@@ -350,6 +350,44 @@ function Env.RequireInstance(InstanceValue)
     return LoadModule(InstanceValue, nil)
 end
 
+-- Scripts that returned a lifecycle handle, so teardown can release their connections.
+-- A Script/LocalScript in this project returns a table with Destroy(); the harness retains it
+-- the same way a host would, instead of dropping the value on the floor.
+local ScriptHandles = {}
+
+local function DestroyScriptHandles()
+    for Index = #ScriptHandles, 1, -1 do
+        local Handle = ScriptHandles[Index]
+        if type(Handle) == "table" and type(Handle.Destroy) == "function" then
+            pcall(Handle.Destroy)
+        end
+        ScriptHandles[Index] = nil
+    end
+    table.clear(ScriptHandles)
+end
+
+-- Runs every cached module's shutdown hook, in any order, before the cache is dropped.
+-- ResetModuleCache discards instances without running teardown, which leaves their listeners
+-- attached to the shared services. Suites call this so each one starts from a clean world.
+function Env.ShutdownCachedModules()
+    local Paths = {}
+    for Path in pairs(ModuleCache) do
+        Paths[#Paths + 1] = Path
+    end
+    table.sort(Paths)
+    for Index = 1, #Paths do
+        local Cached = ModuleCache[Paths[Index]]
+        local Module = Cached and Cached[1]
+        if type(Module) == "table" then
+            if type(Module.Destroy) == "function" then
+                pcall(Module.Destroy)
+            elseif type(Module.Shutdown) == "function" then
+                pcall(Module.Shutdown)
+            end
+        end
+    end
+end
+
 function Env.IsCached(ModulePath)
     return ModuleCache[ModulePath] ~= nil
 end
@@ -360,7 +398,13 @@ function Env.PurgeCache(ModulePath)
     ModuleCache[ModulePath] = nil
 end
 
+-- Drops every cached module. Runs each cached module's Destroy/Shutdown hook first: discarding
+-- instances without teardown leaves their listeners attached to the shared mock services, so the
+-- next suite would observe the previous suite's connections. Doing it here means no individual
+-- suite has to remember.
 function Env.ResetModuleCache()
+    DestroyScriptHandles()
+    Env.ShutdownCachedModules()
     ModuleCache = {}
     RequireEdges = {}
     Loading = {}
@@ -571,6 +615,11 @@ function Env.GetPlayers()
     return Env.Mock.GetPlayers()
 end
 
+-- Test-support: drops the player list without firing PlayerRemoving.
+function Env.ClearPlayersSilently()
+    return Env.Mock.ClearPlayersSilently()
+end
+
 -- Fires RunService.Heartbeat DeltaSeconds times with a fixed step and drains deferred tasks.
 -- Sets who the mock remotes treat as the calling client.
 function Env.SetRemoteSender(Player)
@@ -667,6 +716,12 @@ function Env.RunScriptFile(RojoPath)
         Env.Errors[Env.ErrorCount] = { Path = RojoPath, Message = tostring(Results[2]) }
         error(Results[2], 2)
     end
+    -- Retain a returned lifecycle handle so ResetModuleCache can release the script's
+    -- connections. Without this the script's listeners outlive the world they were made for.
+    if type(Results[2]) == "table" then
+        ScriptHandles[#ScriptHandles + 1] = Results[2]
+    end
+
     return Results[2]
 end
 

@@ -71,6 +71,7 @@ where Roblox requires them (`StarterPlayerScripts` and `ServerScriptService`); m
 | `CharacterJoints` | 141 | Motor6D discovery, joint caching, limb-length measurement |
 | `StatePool` | 63 | Character registry: lookup map + dense active list + swap-removal |
 | `PoseBuffer` | 43 | Leaf module: 12-byte-per-joint stride, `WritePoseAdd` / `WritePoseBlend` |
+| `PlayerTracker` | 98 | Player lifecycle: global + per-player connections, all releasable |
 
 ### Shared modules (`ProceduralAnimation/Shared/`)
 
@@ -87,6 +88,7 @@ where Roblox requires them (`StarterPlayerScripts` and `ServerScriptService`); m
 | `Config/Data/ConfigMotion` | 119 | Clip authoring helpers, motion curves |
 | `Math/IK/MathIK` | 109 | `SolveFabrik` |
 | `Config/Compile/ConfigCompile` | 105 | Compile pass: turns authored data into runtime clip tables |
+| `Utilities/Connections` | 71 | Connection tracker: `New`/`Add`/`DisconnectAll`/`Count` |
 | `AnimationMath` | 15 | Thin aggregator loader |
 | `AnimationConfig` | 13 | Thin aggregator loader |
 
@@ -94,8 +96,8 @@ where Roblox requires them (`StarterPlayerScripts` and `ServerScriptService`); m
 
 | Script | Lines | Role |
 |---|---|---|
-| `StarterPlayerScripts/ProceduralAnimationClient.local.luau` | 29 | `Animator.Init()`, then `CharacterAdded` / `CharacterRemoving` wiring |
-| `ServerScriptService/ProceduralAnimationServer.legacy.luau` | 41 | `Network.Init()`, relay setup, `PlayerAdded` / `PlayerRemoving` |
+| `StarterPlayerScripts/ProceduralAnimationClient.local.luau` | 66 | `Animator.Init()`, local-character wiring, aborts cleanly if the folder never replicates; returns a `Bootstrap` handle with `Destroy` |
+| `ServerScriptService/ProceduralAnimationServer.legacy.luau` | 62 | `Network.Init()`, relay setup, tracked player signals; returns a `Server` handle with `Destroy` |
 
 > **Naming caveat.** These two `.luau` extension suffixes are *harness conventions* that tell
 > `Tools/verify/verify.mjs` what instance class to mock (`.local` → `LocalScript`,
@@ -155,8 +157,26 @@ Supporting: `Ease`, `EasingFunctions`, `EasingCount`, `Clamp01`, `SmoothFactor`,
 `SetLocomotionWeight`, `SetIkTarget`, `PlayGesture`, `StopGesture`, `SetEasingOverride`,
 `SetPreviewMode`, `BindToEvent`.
 
-Public API is locked by `Tools/verify/baseline/api.json`: **136 exports across 6 modules**.
+Public API is locked by `Tools/verify/baseline/api.json`: **138 exports across 6 modules**.
 The `api` suite fails if any export is removed or changes shape.
+
+### Lifecycle (Phase 4)
+
+Both sides now have a real shutdown path, and every engine connection is retained:
+
+| Owner | Hook | Releases |
+|---|---|---|
+| `ProceduralAnimator` | `Destroy()` | heartbeat, player tracker, every character state, state pool, event callbacks |
+| `AnimationNetwork` | `Shutdown()` | remote event handlers, server player registry |
+| client bootstrapper | `Bootstrap.Destroy()` | local player's `CharacterAdded` / `CharacterRemoving` |
+| server bootstrapper | `Server.Destroy()` | `PlayerAdded` / `PlayerRemoving`, then `Network.Shutdown()` |
+
+Rules that follow from this:
+
+- `Destroy` / `Shutdown` are **idempotent** (safe to call twice) and **terminal** — `Init` refuses
+  to run afterwards. Reviving would need every pooled buffer rebuilt; reloading the module is safer.
+- Every `:Connect` in the project is retained by a tracker or a state field. The `lifecycle` suite
+  asserts this mechanically by scanning the source for unretained `:Connect` calls.
 
 ### Packet layout (frozen — do not change without a version bump)
 
@@ -246,9 +266,10 @@ analysis are genuine.
 | `network` | 67 | Packet layout byte-by-byte, quantization round-trip, bounds rejection |
 | `integration` | 54 | Boot, setup, pose actually changes, IK, gestures, throttling, teardown |
 | `bootstrap` | 26 | Both bootstrappers execute, lifecycle, require graph acyclic, size rule |
-| `api` | 2 | 136 exports unchanged vs `baseline/api.json` |
+| `api` | 2 | 138 exports unchanged vs `baseline/api.json` |
+| `lifecycle` | 50 | Connection tracker, `Destroy`/`Shutdown`, player tracking, no bare connects |
 
-**Latest result: PASS 325 | FAIL 0 | BLOCKED 0, 24/24 files compile.**
+**Latest result: PASS 377 | FAIL 0 | BLOCKED 0, 26/26 files compile.**
 
 Known harness limitations:
 
@@ -261,6 +282,12 @@ Known harness limitations:
 ---
 
 ## 7. Open issues
+
+### Phase 4 result
+
+**PASS (source + harness verified).** Lifecycle, duplicate-init protection and full cleanup are
+in place on both sides and covered by 50 assertions. Note this is *lifecycle* verification, not
+proof that animation runs on a real character — see the rig blocker above.
 
 ### Verification / tooling
 

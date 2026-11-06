@@ -21,6 +21,7 @@ local Players = game:GetService("Players")
 
 local Config = require(script.Parent.AnimationConfig)
 local Changelog = require(script.Parent.Changelog)
+local Connections = require(script.Parent.Utilities.Connections)
 local Constants = require(script.Parent.Networking.Constants.NetworkConstants)
 
 local Network = {}
@@ -85,8 +86,12 @@ local ServerPlayerCount = 0
 local ServerPlayerList = {}
 
 local Initialized = false
+local Shutdown = false
 local PoseRemote = nil
 local EventRemote = nil
+
+-- Every engine connection this module makes is recorded here so Shutdown can release it all.
+local ConnectionTracker = Connections.New()
 local BusEvent = nil
 local RemotesFolder = nil
 
@@ -375,8 +380,8 @@ local function ConnectServer()
     EventRemote = EnsureRemote("RemoteEvent", "EventRemote")
     BusEvent = EnsureRemote("BindableEvent", "AnimationBus")
 
-    PoseRemote.OnServerEvent:Connect(OnServerPose)
-    EventRemote.OnServerEvent:Connect(OnServerEvent)
+    Connections.Add(ConnectionTracker, PoseRemote.OnServerEvent:Connect(OnServerPose))
+    Connections.Add(ConnectionTracker, EventRemote.OnServerEvent:Connect(OnServerEvent))
 
     local CurrentPlayers = PlayersGetPlayers(Players)
     for Index = 1, #CurrentPlayers do
@@ -397,21 +402,27 @@ local function ConnectClient()
     LocalBus.Name = "AnimationBusLocal"
     BusEvent = LocalBus
 
-    PoseRemote.OnClientEvent:Connect(OnClientPose)
-    EventRemote.OnClientEvent:Connect(function(SourcePlayer, EventId, Value)
+    Connections.Add(ConnectionTracker, PoseRemote.OnClientEvent:Connect(OnClientPose))
+    Connections.Add(ConnectionTracker, EventRemote.OnClientEvent:Connect(function(SourcePlayer, EventId, Value)
         if TypeOf(EventId) ~= "number" then
             return
         end
         if TypeOf(SourcePlayer) == "Instance" then
             FireBus(EventId, Value)
         end
-    end)
+    end))
 
     return true
 end
 
 function Network.Init()
     if Initialized then
+        return
+    end
+    if Shutdown then
+        -- Init is one-shot per module load. A shutdown device cannot be revived because the
+        -- jitter-buffer state it depended on has been released; the caller must reload the module.
+        Changelog.Log("AnimationNetwork: Init ignored, module was shut down")
         return
     end
 
@@ -435,7 +446,31 @@ function Network.Init()
 end
 
 function Network.IsReady()
-    return Initialized
+    return Initialized and not Shutdown
+end
+
+-- Releases every engine connection and returns the module to an inert state. Safe to call twice.
+-- Deliberately does not destroy the remotes: they are created once and shared, and destroying
+-- them would break a subsequent re-Init on the other side of the session.
+function Network.Shutdown()
+    if Shutdown then
+        return
+    end
+    Shutdown = true
+    Initialized = false
+
+    Connections.DisconnectAll(ConnectionTracker)
+
+    for Index = ServerPlayerCount, 1, -1 do
+        local Player = ServerPlayerList[Index]
+        if Player then
+            ReleaseRemotePose(Player)
+        end
+        ServerPlayerList[Index] = nil
+    end
+    ServerPlayerCount = 0
+
+    Changelog.Log("AnimationNetwork shut down")
 end
 
 return Network

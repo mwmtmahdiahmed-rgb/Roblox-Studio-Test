@@ -10,9 +10,14 @@ local Shared = Folder:WaitForChild("Shared", 15)
 
 local Network = require(Shared.AnimationNetwork)
 local Changelog = require(Shared.Changelog)
+local Connections = require(Shared.Utilities.Connections)
 
 Network.Init()
 
+-- Every connection this script makes is tracked so Destroy can release all of them. A server
+-- Script normally lives for the whole session, but an explicit lifecycle keeps the bootstrapper
+-- consistent with the client and makes it testable.
+local ConnectionsList = Connections.New()
 local Connected = {}
 
 local function OnPlayerAdded(Player)
@@ -35,7 +40,22 @@ for Index, Player in Players:GetPlayers() do
     OnPlayerAdded(Player)
 end
 
-Players.PlayerAdded:Connect(OnPlayerAdded)
-Players.PlayerRemoving:Connect(OnPlayerRemoving)
+Connections.Add(ConnectionsList, Players.PlayerAdded:Connect(OnPlayerAdded))
+Connections.Add(ConnectionsList, Players.PlayerRemoving:Connect(OnPlayerRemoving))
+
+-- Releases the bootstrapper's connections and networking state. Idempotent.
+local Server = {}
+
+function Server.Destroy()
+    Connections.DisconnectAll(ConnectionsList)
+    for Player in pairs(Connected) do
+        Connected[Player] = nil
+        Network.UnregisterPlayer(Player)
+    end
+    Network.Shutdown()
+    Changelog.Log("ProceduralAnimationServer stopped")
+end
 
 Changelog.Log("ProceduralAnimationServer ready")
+
+return Server

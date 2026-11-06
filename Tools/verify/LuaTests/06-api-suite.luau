@@ -110,11 +110,8 @@ end
 
 local function ModuleShortName(Path)
     local Last = string.match(Path, "([^.]+)$")
-    -- Keep the historic key for the one module that was renamed when it moved into a subfolder,
-    -- so the recorded baseline stays comparable across the reorganization.
-    if Last == "NetworkConstants" then
-        return "AnimationNetworkConstants"
-    end
+    -- Baseline keys are the module's own name. Do NOT alias here: an alias that no longer matches
+    -- the recorded baseline makes every lookup miss, and the comparison then passes vacuously.
     return Last or Path
 end
 

@@ -7,8 +7,6 @@ The canonical machine-readable copy lives at
 `Changelog.Entries` and `Changelog.Log`. This file is the human-readable mirror. When you add
 an entry, add it in **both** places.
 
-Regenerate this mirror with the script in `Documentation/` if the two ever drift.
-
 ---
 
 
@@ -155,13 +153,30 @@ Regenerate this mirror with the script in `Documentation/` if the two ever drift
 - **Affected:** `Documentation/*`
 - **Reason:** Priority 3 requires these before any coding session. They are derived from the actual source, not generated boilerplate; two SyntaxReference claims (buffer # length, math.round) were empirically corrected after testing them in the harness VM.
 
+## 1.0.4
+
+### Added Shared/Utilities/Connections and a real Destroy/Shutdown lifecycle to the client runtime, the network layer and both bootstrappers.
+
+- **Affected:** `Utilities/Connections, ProceduralAnimator, PlayerTracker, AnimationNetwork, ProceduralAnimationClient, ProceduralAnimationServer`
+- **Reason:** Phase 4. Animator.Init never stored its Players connections and TrackPlayer never stored its per-player connections, so nothing could ever be disconnected; there was no Destroy at all on either side. Connections are now recorded in trackers and released by Destroy/Shutdown, which are idempotent and terminal.
+
+### Extracted PlayerTracker from ProceduralAnimator.
+
+- **Affected:** `PlayerTracker`
+- **Reason:** Keeps the animator under 500 lines after the lifecycle work, and puts every player-level connection decision in one auditable file.
+
+### Verification harness: Suite.Reset was declared but never invoked; ResetModuleCache dropped modules without running their teardown; script lifecycle handles were discarded.
+
+- **Affected:** `Tools/verify/src/00-runner.luau, src/03-env.luau, src/02-mock-services.luau`
+- **Reason:** Three harness defects that made lifecycle tests unreliable. Suites silently ran against the previous suite's world, and connections leaked across suites. ResetModuleCache now runs each cached module's Destroy/Shutdown first, and RunScriptFile retains returned handles so teardown can release them.
+
 ---
 
 ## Entry format
 
 ```
 {
-    Version = "1.0.4",
+    Version = "1.0.5",
     Description = "One line. What changed.",
     File = "Module, Module",
     Reason = "Why it was necessary. What was broken or missing.",
