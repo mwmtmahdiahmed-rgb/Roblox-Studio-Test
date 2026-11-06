@@ -324,6 +324,18 @@ Known harness limitations:
 
 ## 7. Open issues
 
+### Phase 3 — COMPLETE
+
+**PASS.** All exit criteria are now met: target hierarchy (`Client/Runtime`,
+`Shared/Config/{Data,Compile}`, `Shared/Math/{Core,Curves,IK,Waves}`,
+`Shared/Networking/{Constants,Receive}`), every script ≤ 500 lines, no duplicate or obsolete
+modules, documentation present, and static analysis clean (0 errors / 0 warnings /
+0 definition gaps). Shipped in two PRs: #2 (architecture + documentation) and the PR that closes
+the typing item.
+
+Scope caveat, carried forward: this certifies *structure and analysis*, not that animation runs
+on a real character. The AnimationConstraint rig blocker below is untouched.
+
 ### Phase 4 result
 
 **PASS (source + harness verified).** Lifecycle, duplicate-init protection and full cleanup are
