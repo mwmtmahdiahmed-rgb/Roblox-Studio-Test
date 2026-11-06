@@ -342,7 +342,11 @@ Measured with `node bench.mjs` (comparative, same machine):
   immaterial): skips one CFrame composition per frame.
 - FABRIK targetScratch tables (no per-frame `Vector3.new` for chain targets).
 - `State.FootRayDirection` cached at state creation (raycast direction is constant).
-- `Bench: SampleSpline ≈ 570 ns/op, SampleCompiledWave ≈ 1440 ns/op, Ease ≈ 218–593 ns/op`.
+- `Bench: SampleSpline ≈ 630 ns/op, SampleCompiledWave ≈ 1433 ns/op, Ease ≈ 224–596 ns/op`.
+- Phase 8 paths benched (2026-11-06): `GetSplineLength` 136 ns/op (field read),
+  `SampleSplineAtDistance` ≈ 1787 ns/op (constant-speed spline sampling; binary search +
+  evaluation, ~2.8× `SampleSpline`'s cost — the price of constant speed),
+  `StepSpring` ≈ 373 ns/op (semi-implicit Euler, allocation-free).
 
 Binary search for spline segment lookup was considered and rejected: the array is ≤ 8 keys and a
 linear scan measured faster and simpler.

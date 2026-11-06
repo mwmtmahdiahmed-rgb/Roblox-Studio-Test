@@ -300,6 +300,15 @@ an entry, add it in **both** places.
 
 ---
 
+## 1.1.3
+
+### `bench.mjs` extended: `GetSplineLength`, `SampleSplineAtDistance`, `StepSpring` measured.
+
+- **Affected:** `Tools/verify/bench.mjs, Documentation/Memory.md`
+- **Reason:** Phase 8 added public hot-path math without benchmark coverage (number inconsistency found during the docs-accuracy pass). `SampleSplineAtDistance` ≈ 1787 ns/op (~2.8× `SampleSpline` — the price of constant-speed sampling), `GetSplineLength` 136 ns/op (pure field read), `StepSpring` ≈ 373 ns/op. Machine-dependent, comparative only. Framework code unchanged; `Config.Version` stays `1.1.0`.
+
+---
+
 ## Entry format
 
 ```

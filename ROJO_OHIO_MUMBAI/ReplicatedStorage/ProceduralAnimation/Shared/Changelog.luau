@@ -320,6 +320,12 @@ Changelog.Entries = {
         File = "Documentation/GoodPractices.md, Documentation/BadPractices.md, Tools/verify/README.md (new), .github/workflows/verify.yml (new), Documentation/Maintenance.md, Documentation/Memory.md",
         Reason = "Keep the documentation as rigorous as the code after Phases 6-10 and the project-file work. GoodPractices: the Compact example now shows the Phase 7 PendingRemovals early-out and the PoseBuffer require path resolves correctly; BadPractices: the config example cites keys that exist (Locomotion.BlendRate, IkBlendRate) and the 'exports preserved' claim no longer cites a stale count; CI runs the same gate we run locally (npm ci + verify.mjs + rojo-check.mjs) so a regression cannot merge quietly. No framework code changed; Config.Version stays 1.1.0.",
     },
+    {
+        Version = "1.1.3",
+        Description = "bench.mjs extended: GetSplineLength, SampleSplineAtDistance and StepSpring are now measured; numbers recorded in Memory.md.",
+        File = "Tools/verify/bench.mjs, Documentation/Memory.md",
+        Reason = "Phase 8 added public hot-path math functions without benchmark coverage. SampleSplineAtDistance measures ~1787 ns/op (~2.8x SampleSpline), GetSplineLength 136 ns/op (pure field read), StepSpring ~373 ns/op. Machine-dependent, comparative only. No framework code changed; Config.Version stays 1.1.0.",
+    },
 }
 
 --=========================================================

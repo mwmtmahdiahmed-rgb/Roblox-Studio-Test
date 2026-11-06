@@ -88,6 +88,20 @@ Bench("Ease(22 ElasticInOut)", 1000000, function(Index)
     return MathLib.Ease(22, Phases[(Index % 4096) + 1])
 end)
 
+local TotalLength = MathLib.GetSplineLength(Spline)
+Bench("GetSplineLength (field read)", 1000000, function()
+    return MathLib.GetSplineLength(Spline)
+end)
+
+Bench("SampleSplineAtDistance (const speed)", 300000, function(Index)
+    return MathLib.SampleSplineAtDistance(Spline, (Phases[(Index % 4096) + 1]) * TotalLength)
+end)
+
+local Spring = { Position = 0.0, Velocity = 0.0 }
+Bench("StepSpring (semi-implicit Euler)", 1000000, function()
+    return MathLib.StepSpring(Spring, 1.0, 170.0, 14.0, 1.0 / 60.0)
+end)
+
 -- Compact: algorithm comparison, mirrors StatePool.Compact exactly.
 local Active = {}
 for Index = 1, 16 do Active[Index] = { Valid = true } end
