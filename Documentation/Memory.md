@@ -247,7 +247,7 @@ scope and must not be silently "fixed" inside an unrelated phase.
 1. **`ClientRigKinematics` — uninitialised function upvalue.** `local ApplyWorldDirection` was
    followed later by `local function ApplyWorldDirection`, shadowing instead of assigning.
    Fix: drop the second `local`.
-2. **`Tools/verify/src/02-mock-services.luau` — undefined global `UpperTorso`.** Mock rig was
+2. **`Tools/verify/src/02-mock-services.luau` — undefined global `UpperTorso`.** (The rig builder since moved to `02b-mock-rig.luau` in the 2026-11-06 split.) Mock rig was
    structurally invalid and hid the real FABRIK path.
 3. **`CharacterMotionState` — nil `MathLib` on the jump path.** Injected from
    `ClientPosePipeline`.
@@ -385,10 +385,10 @@ list, previously only 4 of 7 chunks — `04-testkit.luau` was silently uncompile
 
 - **`src/01-mock-value-types.luau` split** → `01b-mock-containers.luau` (Signals, Instance mock,
   Enum). 414 + 439 lines. The 01b chunk receives the Part A mock table and extends it in place.
-- **`src/02-mock-services.luau` split** → `02b-mock-rig.luau` (stock R15 rig builder). 446 +
+- **`src/02-mock-services.luau` split** → `02b-mock-rig.luau` (stock R15 rig builder). 445 +
   232 + verify wiring; `02b` receives `(Mock, HumanoidClass, MockHelpers)` and assigns
-  `CreateR15Character` onto the same table (`Game.__Mock`). Export addition on the factory
-  return: `HumanoidClass` (params/nop).
+  `CreateR15Character` onto the same table (`Game.__Mock`); the `02` factory return therefore
+  gained `HumanoidClass` on top of the original exports (harness-internal, additive).
 - **`src/03-env.luau` split** → `03b-env-simulation.luau` (globals installation, virtual clock,
   heartbeat pump, deferred queue, mock passthroughs, script introspection). 432 + 335 lines.
   The core chunk stashes `Env.__Context` (module registry, require stack, host-compiler
@@ -399,7 +399,7 @@ list, previously only 4 of 7 chunks — `04-testkit.luau` was silently uncompile
 - **`LuaTests/*.luau` are documented-exempt from the 500-line cap** (only
   `04-integration-suite.luau` exceeds it, at 655): they are test specifications closing over
   stateful world-setup; splitting would duplicate fragile setup for zero behaviour gain.
-  Framework stays 100% ≤ 500 (max: ConfigData.luau, 494). See `Tools/verify/README.md`.
+  Framework stays 100% ≤ 500 (max: ConfigData.luau, 495). See `Tools/verify/README.md`.
 - **Comment accuracy (framework, comment-only, no runtime change):** head look-at clamps
   pitch/yaw symmetrically to ±`Config.IkAngleLimitMax`; the `SetLookAtTarget` doc, the
   `ApplyLookAt` header and the `Config.LookAt` comment said `IkAngleLimitMin/Max` — corrected.

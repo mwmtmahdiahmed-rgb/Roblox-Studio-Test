@@ -318,6 +318,15 @@ an entry, add it in **both** places.
 
 ---
 
+## 1.1.5
+
+### Documentation consistency sweep after the harness split: living docs synced; historical records untouched.
+
+- **Affected:** `Documentation/Audit.md (appended addendum only), Documentation/Maintenance.md, Documentation/Memory.md, ROJO_OHIO_MUMBAI/ServerStorage/ZeroScript/Memory.luau`
+- **Reason:** After the 1.1.4 split the living docs still cited pre-split paths and the pre-split gate count. Audit.md's "Current gate" block and all historical changelog entries are append-only and were left byte-identical; the addendum records the post-split state (PASS 437 | FAIL 0). Maintenance.md now expects 437 and points at the harness's own rule note; Memory.md flags that the `UpperTorso` fix lives in `02b-mock-rig.luau`. No framework or harness code changed; the gate is unchanged; `Config.Version` stays `1.1.0`.
+
+---
+
 ## Entry format
 
 ```

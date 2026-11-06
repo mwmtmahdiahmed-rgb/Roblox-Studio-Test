@@ -84,3 +84,17 @@ remains the single largest unknown and gates any claim of "works on my avatar".
 | Arc-length API surface | `math.exports.allPresent` extended | — | math 95 |
 
 **Phase 9 exit: PASS (with the honest caveats in "What this audit cannot claim").**
+
+
+## Post-audit addendum — 2026-11-06 (branch `arena/e0507aaf-roblox-studio-test`)
+
+The harness was split after this audit (changelog 1.1.4). The mock files this audit's fixes live
+in moved with it: the `UpperTorso` fix now resides in `Tools/verify/src/02b-mock-rig.luau`
+(previously `02-mock-services.luau`); `03-env.luau` was split so the globals/clock/pump live in
+`03b-env-simulation.luau`; every harness chunk carries `--!strict` and is compile-checked by
+`verify.mjs`; `LuaTests/` specs are documented-exempt from the 500-line cap. The always-true
+`lifecycle.stopHaltsUpdates` integration assertion has been replaced with a real
+`Transform`-identity check. The **Current gate** block above is the audit-time record and is
+deliberately not rewritten; at the time of this addendum the gate reads **PASS 437 | FAIL 0**
+(28/28 compile, Analysis 0 errors / 0 warnings / 40 definition gaps). No framework behaviour
+changed since the audit.

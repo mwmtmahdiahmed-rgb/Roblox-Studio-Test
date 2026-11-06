@@ -25,12 +25,14 @@ Every push/PR to `main` or `arena/**` runs the same two commands on GitHub Actio
 (`.github/workflows/verify.yml`) — the gate must be green before merge; it has no secrets.
 
 Expected: `Compilation 28 pass / 0 fail`, `Analysis 0 errors / 0 warnings / 40 gaps`,
-`Cases PASS 433 | FAIL 0`. The 40 definition gaps are pre-existing and classified, not
+`Cases PASS 437 | FAIL 0`. The 40 definition gaps are pre-existing and classified, not
 failures; a missing `roblox-definitions.luau` is a hard FAIL.
 
 ## 2. 500-line rule & file placement
 
-Every script ≤ 500 lines. New modules live in the existing hierarchy:
+Every script ≤ 500 lines. The verification harness honours the same cap (chunks are
+compile-checked); only `Tools/verify/LuaTests/` specs are exempt — see `Tools/verify/README.md`.
+New modules live in the existing hierarchy:
 
 - Runtime client logic → `Client/Runtime/`
 - Require-time init (returns handles) → `Client/Bootstrap` / `Server/Bootstrap`
