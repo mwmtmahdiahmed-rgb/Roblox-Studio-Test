@@ -73,12 +73,35 @@
     "ReleaseRemotePose": "function",
     "HasRemotePose": "function",
     "SendEvent": "function",
+    "Shutdown": "function",
     "Init": "function",
     "IsReady": "function",
     "RegisterPlayer": "function",
     "UnregisterPlayer": "function"
   },
-  "AnimationNetworkConstants": {
+  "Changelog": {
+    "RuntimeLog": "{}",
+    "Log": "function",
+    "RuntimeLogCount": "number",
+    "Entries": "array<{Description=string,File=string,Reason=string,Version=string}>"
+  },
+  "ProceduralAnimator": {
+    "SetEasingOverride": "function",
+    "SetLocomotionWeight": "function",
+    "IsRunning": "function",
+    "Init": "function",
+    "PlayGesture": "function",
+    "SetPreviewMode": "function",
+    "Start": "function",
+    "BindToEvent": "function",
+    "TeardownCharacter": "function",
+    "Stop": "function",
+    "SetIkTarget": "function",
+    "Destroy": "function",
+    "StopGesture": "function",
+    "SetupCharacter": "function"
+  },
+  "NetworkConstants": {
     "JointDataOffset": "number",
     "WriteClampedI16": "function",
     "BufferReadU8": "function",
@@ -125,26 +148,5 @@
     "BufferWriteI16": "function",
     "TypeOf": "function",
     "BufferReadI16": "function"
-  },
-  "ProceduralAnimator": {
-    "SetEasingOverride": "function",
-    "SetLocomotionWeight": "function",
-    "IsRunning": "function",
-    "PlayGesture": "function",
-    "Init": "function",
-    "SetPreviewMode": "function",
-    "BindToEvent": "function",
-    "TeardownCharacter": "function",
-    "Start": "function",
-    "SetIkTarget": "function",
-    "Stop": "function",
-    "StopGesture": "function",
-    "SetupCharacter": "function"
-  },
-  "Changelog": {
-    "RuntimeLog": "{}",
-    "Log": "function",
-    "RuntimeLogCount": "number",
-    "Entries": "array<{Description=string,File=string,Reason=string,Version=string}>"
   }
 }

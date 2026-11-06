@@ -7,7 +7,7 @@
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 
-local Config = require(script.Parent.AnimationConfig)
+local Config = require(script.Parent.Parent.Parent.AnimationConfig)
 
 local Constants = {}
 

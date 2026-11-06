@@ -150,7 +150,7 @@ function Suite.Body(Cases)
     Kit.True("client.executes", ClientOk, ClientOk and "client script ran to completion" or tostring(ClientThrown))
     Kit.NotNil("client.animatorInitialised", Env.FindLog("ProceduralAnimator initialized"))
 
-    local Animator = Env.Require("ReplicatedStorage.ProceduralAnimation.Client.ProceduralAnimator")
+    local Animator = Env.Require("ReplicatedStorage.ProceduralAnimation.Client.Runtime.ProceduralAnimator")
     Kit.True("client.animatorRunning", Animator.IsRunning())
 
     -- Spawning a character after the bootstrapper has run must set it up automatically.
@@ -188,7 +188,7 @@ function Suite.Body(Cases)
     Env.Require("ReplicatedStorage.ProceduralAnimation.Shared.AnimationConfig")
     Env.Require("ReplicatedStorage.ProceduralAnimation.Shared.AnimationMath")
     Env.Require("ReplicatedStorage.ProceduralAnimation.Shared.AnimationNetwork")
-    Env.Require("ReplicatedStorage.ProceduralAnimation.Client.ProceduralAnimator")
+    Env.Require("ReplicatedStorage.ProceduralAnimation.Client.Runtime.ProceduralAnimator")
     Env.Require("ReplicatedStorage.ProceduralAnimation.Shared.Changelog")
 
     local Edges = Env.GetRequireEdges()

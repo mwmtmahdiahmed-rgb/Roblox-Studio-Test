@@ -8,9 +8,9 @@ local Private = {
     BezierCurves = {},
 }
 
-require(script.Parent.AnimationMathCore)(MathLib, Private)
-require(script.Parent.AnimationMathCurves)(MathLib, Private)
-require(script.Parent.AnimationMathIk)(MathLib, Private)
-require(script.Parent.AnimationMathWaves)(MathLib, Private)
+require(script.Parent.Math.Core.MathCore)(MathLib, Private)
+require(script.Parent.Math.Curves.MathCurves)(MathLib, Private)
+require(script.Parent.Math.IK.MathIK)(MathLib, Private)
+require(script.Parent.Math.Waves.MathWaves)(MathLib, Private)
 
 return MathLib

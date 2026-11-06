@@ -17,7 +17,7 @@ return function(Env, Kit)
 local Suite = { Name = "integration" }
 
 local CLIENT_ROOT = "ReplicatedStorage.ProceduralAnimation"
-local ANIMATOR_PATH = CLIENT_ROOT .. ".Client.ProceduralAnimator"
+local ANIMATOR_PATH = CLIENT_ROOT .. ".Client.Runtime.ProceduralAnimator"
 local BOOTSTRAP_PATH = "StarterPlayerScripts.ProceduralAnimationClient"
 
 local Animator = nil

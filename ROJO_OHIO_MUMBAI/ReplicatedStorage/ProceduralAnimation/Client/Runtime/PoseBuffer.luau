@@ -6,7 +6,7 @@
 -- ClientPosePipeline (clip sampling, overlay blending) and ClientRigKinematics (FABRIK, waves, IK)
 -- can require it directly without either one requiring the other.
 
-local Config = require(script.Parent.Parent.Shared.AnimationConfig)
+local Config = require(script.Parent.Parent.Parent.Shared.AnimationConfig)
 
 local MaxJoints = Config.MaxJoints
 

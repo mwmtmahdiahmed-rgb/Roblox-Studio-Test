@@ -5,10 +5,12 @@ local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 
-local Config = require(script.Parent.Parent.Shared.AnimationConfig)
-local MathLib = require(script.Parent.Parent.Shared.AnimationMath)
-local Network = require(script.Parent.Parent.Shared.AnimationNetwork)
-local Changelog = require(script.Parent.Parent.Shared.Changelog)
+local Config = require(script.Parent.Parent.Parent.Shared.AnimationConfig)
+local MathLib = require(script.Parent.Parent.Parent.Shared.AnimationMath)
+local Network = require(script.Parent.Parent.Parent.Shared.AnimationNetwork)
+local Changelog = require(script.Parent.Parent.Parent.Shared.Changelog)
+local Connections = require(script.Parent.Parent.Parent.Shared.Utilities.Connections)
+local PlayerTrackerModule = require(script.Parent.PlayerTracker)
 
 
 local Animator = {}
@@ -61,6 +63,7 @@ end
 
 local Running = false
 local Initialized = false
+local Destroyed = false
 local HeartbeatConnection = nil
 local PreviewMode = Config.PreviewAnchorRoot
 
@@ -398,45 +401,27 @@ function Animator.BindToEvent(EventName, Callback)
     List[#List + 1] = Callback
 end
 
-local function TrackPlayer(Player)
-    local LocalPlayer = Players.LocalPlayer
-    if Player == LocalPlayer then
-        return
-    end
-    Player.CharacterAdded:Connect(function(Character)
-        task.defer(function()
-            SetupCharacter(Character)
-        end)
-    end)
-    Player.CharacterRemoving:Connect(function(Character)
-        TeardownCharacter(Character)
-    end)
-    if Player.Character then
-        SetupCharacter(Player.Character)
-    end
-end
+local PlayerTracker = PlayerTrackerModule({
+    Players = Players,
+    Connections = Connections,
+    SetupCharacter = SetupCharacter,
+    TeardownCharacter = TeardownCharacter,
+})
 
 function Animator.Init()
     if Initialized then
         return
     end
+    if Destroyed then
+        -- Destroy is terminal. Reviving would mean re-creating every pooled buffer and rebinding
+        -- every connection; reloading the module is cheaper and less error-prone than that.
+        Changelog.Log("ProceduralAnimator: Init ignored, module was destroyed")
+        return
+    end
     Initialized = true
 
     Network.Init()
-
-    local CurrentPlayers = PlayersGetPlayers(Players)
-    for Index = 1, #CurrentPlayers do
-        TrackPlayer(CurrentPlayers[Index])
-    end
-
-    Players.PlayerAdded:Connect(TrackPlayer)
-
-    Players.PlayerRemoving:Connect(function(Player)
-        if Player.Character then
-            TeardownCharacter(Player.Character)
-        end
-        Network.ReleaseRemotePose(Player)
-    end)
+    PlayerTracker.Start()
 
     Changelog.Log("ProceduralAnimator initialized")
     Animator.Start()
@@ -444,6 +429,39 @@ end
 
 function Animator.IsRunning()
     return Running
+end
+
+-- Full teardown of the runtime. Stops the heartbeat, tears down every tracked character, releases
+-- every connection, and clears the state pool. Idempotent and terminal: Init will refuse to run
+-- afterwards.
+--
+-- This exists so a host (a test harness, a mode switch, a game framework reload) can shut the
+-- framework down without leaking connections or character state. The bootstrapper never calls it.
+function Animator.Destroy()
+    if Destroyed then
+        return
+    end
+    Destroyed = true
+
+    Animator.Stop()
+
+    -- Characters first: teardown disconnects each character's own connections.
+    for Index = 1, GetActiveCount() do
+        local State = ActiveStates[Index]
+        if State and State.Character then
+            TeardownCharacter(State.Character)
+        end
+    end
+    StatePool.Clear()
+
+    PlayerTracker.Stop()
+
+    for EventId = 1, MaxEventId do
+        table.clear(EventCallbacks[EventId])
+    end
+
+    Initialized = false
+    Changelog.Log("ProceduralAnimator destroyed")
 end
 
 return Animator

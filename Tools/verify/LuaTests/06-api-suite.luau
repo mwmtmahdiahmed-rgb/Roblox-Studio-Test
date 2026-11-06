@@ -26,9 +26,9 @@ local PUBLIC_MODULES = {
     "ReplicatedStorage.ProceduralAnimation.Shared.AnimationConfig",
     "ReplicatedStorage.ProceduralAnimation.Shared.AnimationMath",
     "ReplicatedStorage.ProceduralAnimation.Shared.AnimationNetwork",
-    "ReplicatedStorage.ProceduralAnimation.Shared.AnimationNetworkConstants",
+    "ReplicatedStorage.ProceduralAnimation.Shared.Networking.Constants.NetworkConstants",
     "ReplicatedStorage.ProceduralAnimation.Shared.Changelog",
-    "ReplicatedStorage.ProceduralAnimation.Client.ProceduralAnimator",
+    "ReplicatedStorage.ProceduralAnimation.Client.Runtime.ProceduralAnimator",
 }
 
 -- Exports that are private implementation detail (a factory's scratch table, live state) and
@@ -110,6 +110,8 @@ end
 
 local function ModuleShortName(Path)
     local Last = string.match(Path, "([^.]+)$")
+    -- Baseline keys are the module's own name. Do NOT alias here: an alias that no longer matches
+    -- the recorded baseline makes every lookup miss, and the comparison then passes vacuously.
     return Last or Path
 end
 
