@@ -26,6 +26,10 @@
 return function(MockValues, MockServices)
 local Host = nil
 local MockInstance = nil
+-- Declared before any function that closes over them: a local declared further down would be
+-- invisible to earlier functions, which then silently read a global instead.
+local MockSignalClass = nil
+local MockServices = nil
 
 local Env = {}
 
@@ -40,6 +44,17 @@ local DeferredCount = 0
 
 -- Keyed by dotted instance path ("ReplicatedStorage.ProceduralAnimation.Shared.AnimationMath").
 local Modules = {}
+
+-- A file mirrored into two services is registered twice; callers may name either the Rojo
+-- path or the dotted instance path.
+function FindScriptInfo(RojoPathOrInstancePath)
+    for _, Candidate in pairs(Modules) do
+        if Candidate.RojoPath == RojoPathOrInstancePath or Candidate.Path == RojoPathOrInstancePath then
+            return Candidate
+        end
+    end
+    return nil
+end
 local ModuleCache = {}
 local Loading = {}
 local RequireStack = {}
@@ -377,6 +392,8 @@ local function InstallGlobals(MockServices, MockValues)
     _G.CFrame = CFrame
     _G.Enum = Enum
     _G.RunService = RunService
+    _G.RaycastParams = MockServices.RaycastParams
+    _G.OverlapParams = MockServices.RaycastParams
 
     -- typeof must report the class-shape tables the mock produces as instances, and keep the
     -- native answers for every other type.
@@ -493,27 +510,28 @@ end
 
 function Env.FireHeartbeat(DeltaTime)
     VirtualClock += DeltaTime
-    MockSignalClass.Fire(MockRunService.Heartbeat, DeltaTime)
+    local RunService = MockServices and MockServices.RunService
+    if not RunService or not MockSignalClass then
+        return
+    end
+    MockSignalClass.Fire(RunService.Heartbeat, DeltaTime)
 end
-
-local MockSignalClass = nil
-local MockRunService = nil
 
 function Env.BindSignalClass(SignalClass, RunService)
     MockSignalClass = SignalClass
-    MockRunService = RunService
 end
 
 --=========================================================
 -- [8] BOOT
 --=========================================================
 
-function Env.Boot(MockServices, MockValues)
-    InstallGlobals(MockServices, MockValues)
-    Env.BindSignalClass(MockValues.SignalClass, MockServices.RunService)
-    Env.MockServices = MockServices
-    Env.MockValues = MockValues
-    Env.Mock = MockServices.MockHelpers
+function Env.Boot(ServicesValue, ValuesValue)
+    InstallGlobals(ServicesValue, ValuesValue)
+    MockServices = ServicesValue
+    Env.BindSignalClass(ValuesValue.SignalClass)
+    Env.MockServices = ServicesValue
+    Env.MockValues = ValuesValue
+    Env.Mock = ServicesValue.MockHelpers
     return true
 end
 
@@ -596,6 +614,60 @@ end
 
 function Env.GetTree()
     return Tree
+end
+
+-- Returns the raw source for a script, keyed by Rojo relative path.
+function Env.GetSource(RojoPath)
+    local Info = FindScriptInfo(RojoPath)
+    return Info and Info.Source or nil
+end
+
+-- Line counts per Rojo path, for the 500-line architectural rule.
+function Env.GetLineCounts()
+    local Counts = {}
+    for _, Info in pairs(Modules) do
+        local Count = 1
+        for _ in string.gmatch(Info.Source, "\n") do
+            Count += 1
+        end
+        Counts[Info.RojoPath] = Count
+    end
+    return Counts
+end
+
+-- Executes a script file in its own environment with `script` bound to its instance, which is
+-- how the engine runs a Script or LocalScript. Used to verify the bootstrappers for real.
+-- A file mirrored into two services is registered twice; the caller names the instance path.
+function Env.RunScriptFile(RojoPath)
+    local Info = FindScriptInfo(RojoPath)
+    if not Info then
+        error("RunScriptFile: no script at " .. tostring(RojoPath), 2)
+    end
+    if Info.ClassName == "ModuleScript" then
+        error("RunScriptFile: " .. RojoPath .. " is a ModuleScript, require it instead", 2)
+    end
+    RequireStack[#RequireStack + 1] = Info.Path
+    local Chunk = Host.Compile(Info.Source, Info.Path)
+    local ScriptInstance = FindByPath(Info.Path)
+    local ScriptEnv = setmetatable({}, { __index = _G })
+    ScriptEnv.script = ScriptInstance
+    ScriptEnv.require = function(Specifier)
+        if type(Specifier) == "table" and Specifier.__Path then
+            return LoadModule(Specifier, Info.Path)
+        elseif type(Specifier) == "string" then
+            error("require: a script must pass a ModuleScript instance, got \"" .. Specifier .. "\"", 2)
+        end
+        error("require: expected a ModuleScript instance, got " .. type(Specifier), 2)
+    end
+    setfenv(Chunk, ScriptEnv)
+    local Results = table.pack(pcall(Chunk))
+    RequireStack[#RequireStack] = nil
+    if not Results[1] then
+        Env.ErrorCount += 1
+        Env.Errors[Env.ErrorCount] = { Path = RojoPath, Message = tostring(Results[2]) }
+        error(Results[2], 2)
+    end
+    return Results[2]
 end
 
 function Env.GetScriptInstance(RelativePath)

@@ -253,6 +253,17 @@ function BuildProjectMap(Files) {
         // StarterPlayerScripts is nested under StarterPlayer in the real tree.
         Map[Rel] = Source;
     }
+    // The client bootstrapper lives directly under StarterPlayerScripts in Rojo, which maps onto
+    // StarterPlayer.StarterPlayerScripts in the instance tree.
+    for (const Rel of [...Object.keys(Map)]) {
+        if (Rel.startsWith("StarterPlayerScripts/")) {
+            Map["StarterPlayer/StarterPlayerScripts/" + Rel.slice("StarterPlayerScripts/".length)] = Map[Rel];
+        }
+        if (Rel.startsWith("StarterPlayer/")) {
+            const Rest = Rel.slice("StarterPlayer/".length);
+            if (!Map["StarterPlayerScripts/" + Rest]) Map["StarterPlayerScripts/" + Rest] = Map[Rel];
+        }
+    }
     return Map;
 }
 

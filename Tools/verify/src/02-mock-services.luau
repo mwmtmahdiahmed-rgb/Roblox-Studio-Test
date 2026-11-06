@@ -463,6 +463,7 @@ local function CreateR15Character(Name, Options)
         Animate.Parent = Character
     end
 
+    Character.Motors = MotorsFolder
     Character.PrimaryPart = RootPart
     Character.Humanoid = Humanoid
     Character.HumanoidRootPart = RootPart

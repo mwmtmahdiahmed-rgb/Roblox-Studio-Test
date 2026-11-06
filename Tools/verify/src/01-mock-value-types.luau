@@ -306,6 +306,10 @@ CFrameClass.__index = function(Self, Key)
         return Vector3New(Self.M02, Self.M12, Self.M22)
     elseif Key == "LookVector" then
         return Vector3New(-Self.M02, -Self.M12, -Self.M22)
+    elseif Key == "Rotation" then
+        -- Rotation is the CFrame with translation removed; unlike the engine this is derived
+        -- rather than a stored alias, but the values are identical.
+        return CFrameFromMatrix(0.0, 0.0, 0.0, Self.M00, Self.M01, Self.M02, Self.M10, Self.M11, Self.M12, Self.M20, Self.M21, Self.M22)
     end
     return rawget(CFrameClass, Key)
 end
@@ -393,6 +397,11 @@ function CFrame.new(...)
         )
     end
     local A = { ... }
+    if Count == 1 and getmetatable(A[1]) == Vector3Class then
+        -- CFrame.new(Vector3) is a documented overload.
+        local Position = A[1]
+        return CFrameFromMatrix(Position.X, Position.Y, Position.Z, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0)
+    end
     return CFrameFromMatrix(A[1] or 0.0, A[2] or 0.0, A[3] or 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0)
 end
 
@@ -736,6 +745,16 @@ function InstanceClass.new(ClassName, Name)
         Initialiser(Value)
     end
     return Value
+end
+
+InstanceClass.Destroy = function(Self)
+    local Children = InstanceClass.GetChildren(Self)
+    for Index = 1, #Children do
+        Children[Index]:Destroy()
+    end
+    SignalClass.Fire(rawget(Self, "Destroying"))
+    rawset(Self, "Destroyed", true)
+    Self.Parent = nil
 end
 
 local Instance = {
