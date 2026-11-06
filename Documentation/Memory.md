@@ -407,6 +407,10 @@ list, previously only 4 of 7 chunks — `04-testkit.luau` was silently uncompile
 - Gate after the work: **PASS 437 | FAIL 0** (was 433 on the previous branch tip), Compilation
   28/28, Analysis 0/0/40, `rojo-check.mjs` OK. Both tooling commits (`dd92f40`, `26881a5`)
   merged to `main` as `5109f27` via PR #7 (2026-11-06T06:38Z); CI green on the PR and on `main`.
+- **`Tools/verify/changelog-check.mjs` (2026-11-06, 1.1.8)** — permanent parity gate between the two
+  changelog copies; asserts no duplicate version headers, ascending order, non-empty sections,
+  identical version sets and equal per-version entry counts (55/55). Wired into the CI gate and
+  `npm run changelog-check`; negative cases verified (exit 1 with precise messages).
 
 ### Verification / tooling
 

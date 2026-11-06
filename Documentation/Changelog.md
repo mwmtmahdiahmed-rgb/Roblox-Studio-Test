@@ -349,6 +349,15 @@ moved under the correct `## 1.0.5` heading (entry text unchanged) and the duplic
 
 ---
 
+## 1.1.8
+
+### New `Tools/verify/changelog-check.mjs`: an offline parity gate between the two changelog copies; wired into CI.
+
+- **Affected:** `Tools/verify/changelog-check.mjs (new), .github/workflows/verify.yml, Tools/verify/package.json, Tools/verify/README.md, Documentation/Maintenance.md, Documentation/Memory.md, ROJO_OHIO_MUMBAI/ServerStorage/ZeroScript/Memory.luau`
+- **Reason:** The 1.1.7 repair showed the changelogs can drift without anyone noticing: the markdown copy misfiled the 1.0.5 entries under 1.0.4 and 1.1.6 then duplicated them. The new checker asserts no duplicate version headers, ascending order, at least one entry per md section, no '### ' entries outside version sections, non-empty Description/File/Reason in every runtime entry, identical version sets in both copies, and equal per-version entry counts (55/55 today, 16 sections). It is wired into the CI gate (verify.yml) and into Tools/verify/package.json scripts so a drift fails CI; negative cases verified (dropped entry, duplicated header, swapped sections, missing runtime entry all exit 1 with precise messages). No framework or harness runtime behaviour changed; gate unchanged (PASS 437 | FAIL 0); Config.Version stays 1.1.0.
+
+---
+
 ## Entry format
 
 ```

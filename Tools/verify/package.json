@@ -6,7 +6,9 @@
   "description": "Offline Luau verification harness for the ProceduralAnimation framework (no Roblox Studio, no playtest).",
   "scripts": {
     "verify": "node verify.mjs",
-    "verify:report": "node verify.mjs --report"
+    "verify:report": "node verify.mjs --report",
+    "changelog-check": "node changelog-check.mjs",
+    "rojo-check": "node rojo-check.mjs"
   },
   "dependencies": {
     "@luau-rs/luau": "0.739.0"
