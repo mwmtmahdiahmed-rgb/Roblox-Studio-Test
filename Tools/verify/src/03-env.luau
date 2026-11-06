@@ -1,0 +1,520 @@
+--[[
+    Tools/verify/src/03-env.luau
+
+    Part 3 of the offline Roblox environment used by Tools/verify.
+
+    Env is the bridge between the sandboxed Luau VM and the real framework source. It:
+
+      * installs the Roblox globals (game, workspace, script, require, task, CFrame, ...)
+        that framework modules expect to be present,
+      * mirrors the Rojo folder layout into a real Instance tree so `script.Parent`
+        navigation inside the modules resolves exactly as it does in Studio,
+      * loads module source files through a host compiler callback and executes each one in
+        its own environment (so per-module `script` and relative `require` work without
+        rewriting the source), and
+      * exposes deterministic simulation primitives (heartbeat pump, deferred task queue,
+        virtual clock, raycast handler) so runtime logic can be driven frame by frame.
+
+    Module loading records the require graph and rejects cycles, which is what lets the
+    verification report state "no circular dependencies" as a measured fact.
+]]
+
+--=========================================================
+-- [1] CONSTANTS
+--=========================================================
+
+return function(MockValues, MockServices)
+local Host = nil
+local MockInstance = nil
+
+local Env = {}
+
+Env.Logs = {}
+Env.LogCount = 0
+Env.Errors = {}
+Env.ErrorCount = 0
+
+local VirtualClock = 0.0
+local DeferredQueue = {}
+local DeferredCount = 0
+
+-- Keyed by dotted instance path ("ReplicatedStorage.ProceduralAnimation.Shared.AnimationMath").
+local Modules = {}
+local ModuleCache = {}
+local Loading = {}
+local RequireStack = {}
+local RequireEdges = {}
+
+local Tree = nil
+local ScriptInstances = {}
+
+--=========================================================
+-- [2] HOST CALLBACKS
+--=========================================================
+
+-- Called by the runner once, before Boot.
+-- Expected keys: Compile(Source, Name) -> function, Clock() -> number, Print(...), Warn(...).
+function Env.SetHost(Callbacks)
+    Host = Callbacks
+end
+
+local function RecordLog(Message, Level)
+    if Env.LogCount >= 4096 then
+        return
+    end
+    Env.LogCount += 1
+    Env.Logs[Env.LogCount] = { Text = tostring(Message), Level = Level }
+end
+
+function Env.ClearLogs()
+    Env.Logs = {}
+    Env.LogCount = 0
+end
+
+function Env.FindLog(Pattern)
+    for Index = 1, Env.LogCount do
+        if string.find(Env.Logs[Index].Text, Pattern, 1, true) then
+            return Env.Logs[Index].Text
+        end
+    end
+    return nil
+end
+
+--=========================================================
+-- [3] INSTANCE PATHS
+--=========================================================
+
+local function ComputePath(InstanceValue)
+    if InstanceValue.__Path then
+        return InstanceValue.__Path
+    end
+    local Segments = {}
+    local Count = 0
+    local Current = InstanceValue
+    while Current do
+        Count += 1
+        Segments[Count] = Current.Name
+        Current = Current.Parent
+    end
+    local Out = ""
+    for Index = Count, 1, -1 do
+        if Out == "" then
+            Out = Segments[Index]
+        else
+            Out = Out .. "." .. Segments[Index]
+        end
+    end
+    return Out
+end
+
+local function FindByPath(Path)
+    local Segments = string.split(Path, ".")
+    local Current = Tree
+    for Index = 1, #Segments do
+        local Segment = Segments[Index]
+        local Found = nil
+        for ChildIndex = 1, Current.ChildCount do
+            if Current.ChildList[ChildIndex].Name == Segment then
+                Found = Current.ChildList[ChildIndex]
+                break
+            end
+        end
+        if not Found then
+            return nil
+        end
+        Current = Found
+    end
+    return Current
+end
+
+--=========================================================
+-- [4] MODULE REGISTRY
+--=========================================================
+
+-- ProjectFiles is a map of Rojo path -> source text, supplied by the runner.
+function Env.LoadProject(ProjectFiles)
+    local Sorted = {}
+    for RelativePath in pairs(ProjectFiles) do
+        Sorted[#Sorted + 1] = RelativePath
+    end
+    table.sort(Sorted)
+
+    for Index = 1, #Sorted do
+        local RelativePath = Sorted[Index]
+        local Segments = string.split(RelativePath, "/")
+        local FileName = Segments[#Segments]
+        local ServiceName = Segments[1]
+
+        if #Segments >= 2 and ServiceName ~= "Tools" then
+            local ServiceInstance = Tree:FindFirstChild(ServiceName)
+            if ServiceInstance then
+                local Current = ServiceInstance
+                for SegmentIndex = 2, #Segments - 1 do
+                    local FolderName = Segments[SegmentIndex]
+                    local Existing = Current:FindFirstChild(FolderName)
+                    if not Existing then
+                        Existing = MockInstance.new("Folder")
+                        Existing.Name = FolderName
+                        Existing.Parent = Current
+                    end
+                    Current = Existing
+                end
+
+                -- Rojo naming: Name.luau -> ModuleScript "Name", Name.local.luau -> LocalScript,
+                -- Name.server.luau -> Script, Name.legacy.luau -> Script.
+                local BaseName = FileName
+                local InstanceClassName = "ModuleScript"
+                local Suffix = string.match(FileName, "%.([a-z]+)%.luau$")
+                if Suffix == "local" then
+                    InstanceClassName = "LocalScript"
+                    BaseName = string.gsub(FileName, "%.local%.luau$", "")
+                elseif Suffix == "server" then
+                    InstanceClassName = "Script"
+                    BaseName = string.gsub(FileName, "%.server%.luau$", "")
+                elseif Suffix == "legacy" then
+                    InstanceClassName = "Script"
+                    BaseName = string.gsub(FileName, "%.legacy%.luau$", "")
+                else
+                    BaseName = string.gsub(FileName, "%.luau$", "")
+                end
+
+                local ModuleInstance = MockInstance.new(InstanceClassName)
+                ModuleInstance.Name = BaseName
+                ModuleInstance.Parent = Current
+                -- Dotted instance path, which is what require() resolves against.
+                local Parts = {}
+                for SegmentIndex = 1, #Segments - 1 do
+                    Parts[#Parts + 1] = Segments[SegmentIndex]
+                end
+                Parts[#Parts + 1] = BaseName
+                local InstancePath = table.concat(Parts, ".")
+                ModuleInstance.__Path = InstancePath
+                ModuleInstance.__RojoPath = RelativePath
+                ModuleInstance.__Service = ServiceName
+
+                Modules[InstancePath] = {
+                    Path = InstancePath,
+                    RojoPath = RelativePath,
+                    Source = ProjectFiles[RelativePath],
+                    Instance = ModuleInstance,
+                    ClassName = InstanceClassName,
+                    Service = ServiceName,
+                }
+                ScriptInstances[RelativePath] = ModuleInstance
+            end
+        end
+    end
+
+    return ScriptInstances
+end
+
+function Env.GetModules()
+    return Modules
+end
+
+function Env.GetRequireEdges()
+    return RequireEdges
+end
+
+function Env.GetLoadingDepth()
+    return #RequireStack
+end
+
+function Env.ResolveModulePath(RelativePath)
+    return FindByPath(RelativePath)
+end
+
+--=========================================================
+-- [5] REQUIRE
+--=========================================================
+
+local function NormaliseRelative(BasePath, Specifier)
+    -- BasePath is a dotted instance path to the requiring script.
+    local Segments = string.split(BasePath, ".")
+    -- Drop the script name itself.
+    table.remove(Segments)
+
+    local Parts = string.split(Specifier, "/")
+    for Index = 1, #Parts do
+        local Part = Parts[Index]
+        if Part == "." then
+            -- no-op
+        elseif Part == ".." then
+            if #Segments > 0 then
+                table.remove(Segments)
+            end
+        else
+            Segments[#Segments + 1] = Part
+        end
+    end
+    return table.concat(Segments, ".")
+end
+
+local function LoadModule(InstanceValue, RequesterPath)
+    local Path = InstanceValue.__Path
+    if not Path then
+        error("require: " .. tostring(InstanceValue.Name) .. " is not part of the project", 3)
+    end
+
+    local Cached = ModuleCache[Path]
+    if Cached then
+        return Cached[1]
+    end
+
+    if Loading[Path] then
+        local Chain = table.concat(RequireStack, " -> ")
+        error("circular require detected: " .. Chain .. " -> " .. Path, 3)
+    end
+
+    local Info = Modules[Path]
+    if not Info then
+        error("require: no source registered for " .. Path, 3)
+    end
+
+    Loading[Path] = true
+    RequireStack[#RequireStack + 1] = Path
+
+    if RequesterPath then
+        RequireEdges[#RequireEdges + 1] = { From = RequesterPath, To = Path }
+    end
+
+    local Chunk = Host.Compile(Info.Source, Path)
+    local ModuleEnv = setmetatable({}, { __index = _G })
+    ModuleEnv.script = InstanceValue
+    ModuleEnv.require = function(Specifier)
+        local TargetPath
+        if type(Specifier) == "table" and Specifier.__Path then
+            -- Roblox style: require(script.Parent.AnimationMath). The instance already carries
+            -- its Rojo path, so it resolves directly.
+            TargetPath = Specifier.__Path
+        elseif type(Specifier) == "string" then
+            if string.sub(Specifier, 1, 1) == "." then
+                TargetPath = NormaliseRelative(Path, Specifier)
+            else
+                TargetPath = Specifier
+            end
+        else
+            error("require: expected a ModuleScript instance or a path string, got " .. type(Specifier), 2)
+        end
+        local Target = FindByPath(TargetPath)
+        if not Target then
+            error("require: module not found: " .. tostring(Specifier) .. " (resolved " .. tostring(TargetPath) .. ")", 2)
+        end
+        return LoadModule(Target, Path)
+    end
+
+    setfenv(Chunk, ModuleEnv)
+
+    local Results = table.pack(pcall(Chunk))
+
+    Loading[Path] = nil
+    RequireStack[#RequireStack] = nil
+
+    if not Results[1] then
+        Env.ErrorCount += 1
+        Env.Errors[Env.ErrorCount] = { Path = Path, Message = tostring(Results[2]) }
+        error("module " .. Path .. " failed to load: " .. tostring(Results[2]), 3)
+    end
+
+    local Value = Results[2]
+    ModuleCache[Path] = { Value }
+    return Value
+end
+
+-- Public entry point. Accepts an instance path such as
+-- "ReplicatedStorage.ProceduralAnimation.Shared.AnimationMath".
+function Env.Require(ModulePath)
+    local Target = FindByPath(ModulePath)
+    if not Target then
+        error("Env.Require: module not found at " .. tostring(ModulePath), 2)
+    end
+    return LoadModule(Target, nil)
+end
+
+function Env.RequireInstance(InstanceValue)
+    return LoadModule(InstanceValue, nil)
+end
+
+function Env.IsCached(ModulePath)
+    return ModuleCache[ModulePath] ~= nil
+end
+
+function Env.ResetModuleCache()
+    ModuleCache = {}
+    RequireEdges = {}
+    Loading = {}
+    RequireStack = {}
+end
+
+--=========================================================
+-- [6] GLOBALS
+--=========================================================
+
+local function InstallGlobals(MockServices, MockValues)
+    local Workspace = MockServices.Workspace
+    local Game = MockServices.Game
+    local ReplicatedStorage = MockServices.ReplicatedStorage
+    local Players = MockServices.Players
+    local RunService = MockServices.RunService
+    local Vector3 = MockValues.Vector3
+    local CFrame = MockValues.CFrame
+    MockInstance = MockValues.Instance
+    _G.Instance = MockValues.Instance
+    local Enum = MockValues.Enum
+
+    Tree = Game
+
+    _G.game = Game
+    _G.workspace = Workspace
+    _G.Workspace = Workspace
+    _G.Vector3 = Vector3
+    _G.CFrame = CFrame
+    _G.Enum = Enum
+    _G.RunService = RunService
+
+    -- typeof must report the class-shape tables the mock produces as instances, and keep the
+    -- native answers for every other type.
+    local NativeTypeof = typeof
+    _G.typeof = function(Value)
+        local Native = NativeTypeof(Value)
+        if Native == "table" and type(Value) == "table" and rawget(Value, "ClassName") then
+            return "Instance"
+        end
+        return Native
+    end
+
+    _G.print = function(...)
+        local Parts = table.pack(...)
+        local Out = {}
+        for Index = 1, Parts.n do
+            Out[Index] = tostring(Parts[Index])
+        end
+        RecordLog(table.concat(Out, " "), "print")
+    end
+
+    _G.warn = function(...)
+        local Parts = table.pack(...)
+        local Out = {}
+        for Index = 1, Parts.n do
+            Out[Index] = tostring(Parts[Index])
+        end
+        RecordLog(table.concat(Out, " "), "warn")
+    end
+
+    _G.debug = _G.debug or {}
+    _G.debug.profilebegin = function() end
+    _G.debug.profileend = function() end
+
+    _G.task = {
+        spawn = function(Callback, ...)
+            local Results = table.pack(pcall(Callback, ...))
+            if not Results[1] then
+                RecordLog("task.spawn error: " .. tostring(Results[2]), "error")
+            end
+        end,
+        defer = function(Callback, ...)
+            DeferredCount += 1
+            DeferredQueue[DeferredCount] = { Callback = Callback, Args = table.pack(...) }
+        end,
+        delay = function(_, Callback, ...)
+            DeferredCount += 1
+            DeferredQueue[DeferredCount] = { Callback = Callback, Args = table.pack(...) }
+        end,
+        wait = function()
+            error("task.wait is not available in verification; use the frame pump instead", 2)
+        end,
+    }
+
+    _G.wait = _G.task.wait
+
+    _G.tick = function()
+        return VirtualClock
+    end
+
+    local NativeClock = os.clock
+    _G.os = setmetatable({
+        time = os.time,
+        date = os.date,
+        difftime = os.difftime,
+        clock = function()
+            return VirtualClock
+        end,
+    }, { __index = os })
+
+    -- Ensure nothing in the harness accidentally relies on wall-clock behaviour.
+    _G.__NativeClock = NativeClock
+
+    _G.script = nil
+end
+
+--=========================================================
+-- [7] SIMULATION PRIMITIVES
+--=========================================================
+
+function Env.Now()
+    return VirtualClock
+end
+
+function Env.AdvanceClock(Seconds)
+    VirtualClock += Seconds
+end
+
+function Env.DrainDeferred()
+    local Guard = 0
+    while DeferredCount > 0 do
+        Guard += 1
+        if Guard > 4096 then
+            error("deferred task queue did not settle", 2)
+        end
+        local Batch = DeferredQueue
+        local BatchCount = DeferredCount
+        DeferredQueue = {}
+        DeferredCount = 0
+        for Index = 1, BatchCount do
+            local Entry = Batch[Index]
+            local Results = table.pack(pcall(Entry.Callback, table.unpack(Entry.Args, 1, Entry.Args.n)))
+            if not Results[1] then
+                RecordLog("deferred task error: " .. tostring(Results[2]), "error")
+            end
+        end
+    end
+    return Guard
+end
+
+function Env.GetDeferredCount()
+    return DeferredCount
+end
+
+function Env.FireHeartbeat(DeltaTime)
+    VirtualClock += DeltaTime
+    MockSignalClass.Fire(MockRunService.Heartbeat, DeltaTime)
+end
+
+local MockSignalClass = nil
+local MockRunService = nil
+
+function Env.BindSignalClass(SignalClass, RunService)
+    MockSignalClass = SignalClass
+    MockRunService = RunService
+end
+
+--=========================================================
+-- [8] BOOT
+--=========================================================
+
+function Env.Boot(MockServices, MockValues)
+    InstallGlobals(MockServices, MockValues)
+    Env.BindSignalClass(MockValues.SignalClass, MockServices.RunService)
+    return true
+end
+
+function Env.GetTree()
+    return Tree
+end
+
+function Env.GetScriptInstance(RelativePath)
+    return ScriptInstances[RelativePath]
+end
+
+return Env
+end
