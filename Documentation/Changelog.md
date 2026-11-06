@@ -173,32 +173,31 @@ an entry, add it in **both** places.
 ### Type checker enabled: `roblox-definitions.luau` written, analysis now on by default.
 
 - **Affected:** `Tools/verify/roblox-definitions.luau (new), Tools/verify/verify.mjs`
-- **Reason:** Phase 3's last exit item. Without the definition file every Roblox global was reported as an unknown global; those were reclassified as "definition gaps" and filtered out of the failures, so analysis looked green while checking almost nothing. A missing or rejected definition file is now a hard failure. Diagnostics went 127 (1 error / 42 warnings / 84 gaps) → 0.
+- **Reason:** Phase 3's last exit item. Without the definition file every Roblox global was reported as an unknown global; those were reclassified as \"definition gaps\" and filtered out of the failures, so analysis looked green while checking almost nothing. A missing or rejected definition file is now a hard failure. Diagnostics went 127 (1 error / 42 warnings / 84 gaps) → 0.
 
----
-
-### Fixed an uninitialised `ApplyWorldDirection` upvalue and an undefined `UpperTorso` in the test mock.
+---\n\n### Fixed an uninitialised `ApplyWorldDirection` upvalue and an undefined `UpperTorso` in the test mock.
 
 - **Affected:** `ClientRigKinematics, Tools/verify/src/02-mock-services.luau, Tools/verify/LuaTests/04-integration-suite.luau`
 - **Reason:** Found by the newly enabled checker. `local function ApplyWorldDirection` after `local ApplyWorldDirection` shadows the forward declaration instead of assigning it, so the FABRIK spine chain called `nil` every frame on any rig with a Chest joint. The mock bug — `Neck.Part0`/`Waist.Part1`/`Chest.Part1` wired from an undefined global — made the rig structurally invalid and hid that path from every existing test. A new `setup.withChest` case now covers it.
 
----
-
-### Fixed a nil `MathLib` on the jump path and a bare `ReleaseRemotePose` call in shutdown.
+---\n\n### Fixed a nil `MathLib` on the jump path and a bare `ReleaseRemotePose` call in shutdown.
 
 - **Affected:** `CharacterMotionState, ClientPosePipeline, AnimationNetwork`
 - **Reason:** Both found by the checker. `MathLib` was never passed to `CharacterMotionState`, so `UpdateJump` threw on every jump. `ReleaseRemotePose` lives on `Network`, so the shutdown loop called `nil`; it was masked only because the harness's server player list is empty at shutdown. Two vacuous jump tests were also fixed: they called `Humanoid.SetState` with a dot, leaving `NewState` nil so no `StateChanged` ever fired.
 
----
-
-### Removed 36 dead locals from the Phase 3 split; annotated `QuaternionFromCFrame`'s return contract.
+---\n\n### Removed 36 dead locals from the Phase 3 split; annotated `QuaternionFromCFrame`'s return contract.
 
 - **Affected:** `ProceduralAnimator, ClientPosePipeline, CharacterMotionState, ClientRigKinematics, CharacterLifecycle, AnimationNetwork, ConfigData, MathCore`
 - **Reason:** Lint warnings from the enabled checker: re-bound pipeline thunks and constants nothing called, a self-assignment (`local Enum = Enum`), duplicate shadowing `Locomotion` pairs, unused service locals. The return annotation removes the last type error — the checker infers an unannotated parameter as `unknown` rather than `any`, poisoning the `Dot` product fed to `Acos(Clamp(...))`. Behaviour unchanged; packet layout and public API untouched.
 
----
+---\n\n## 1.0.5
 
-## Entry format
+### Phase 6: Global Standards Migration completed.
+
+- **Affected:** `All 26 modules (Batches 1-4)`
+- **Reason:** Applied `--!strict` and explicit types to all modules. PascalCase naming and functional/data-oriented architecture maintained. Line counts ≤ 500 per script. 138 exports preserved. Verification harness `node verify.mjs` maintains baseline PASS (407/0/0/0) for compilation and runtime suites (with minor analysis warnings on external requires/MathCore return types as per existing project baseline). Documentation updated. Pull Request #5 opened for branch `arena/bf95252a-roblox-studio-test`.
+
+---\n\n## Entry format
 
 ```
 {

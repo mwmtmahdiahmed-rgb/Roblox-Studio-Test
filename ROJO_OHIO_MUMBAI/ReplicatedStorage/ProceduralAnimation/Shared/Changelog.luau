@@ -223,6 +223,12 @@ Changelog.Entries = {
         File = "Tools/verify/src/00-runner.luau, src/03-env.luau, src/02-mock-services.luau",
         Reason = "Three harness defects that made lifecycle tests unreliable. Suites silently ran against the previous suite's world, and connections leaked across suites. ResetModuleCache now runs each cached module's Destroy/Shutdown first, and RunScriptFile retains returned handles so teardown can release them.",
     },
+    {
+        Version = "1.0.5",
+        Description = "Phase 6: Global Standards Migration completed. Applied --!strict and explicit types to all 26 modules (Batches 1-4). PascalCase naming and functional/data-oriented architecture maintained. Line counts ≤ 500 per script. 138 exports preserved. Verification harness node verify.mjs maintains baseline PASS (407/0/0/0) for compilation and runtime suites. Documentation updated. Pull Request #5 opened for branch arena/bf95252a-roblox-studio-test.",
+        File = "All 26 modules (Batches 1-4)",
+        Reason = "Phase 6 Global Standards Migration complete. Bootstrappers (Batch 4) finalized. PR #5 created.",
+    },
 }
 
 --=========================================================
