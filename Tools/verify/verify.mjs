@@ -44,6 +44,8 @@ const Args = process.argv.slice(2);
 const OnlyFilter = (Args.find((A) => A.startsWith("--only=")) || "").split("=")[1] || null;
 const SkipAnalysis = Args.includes("--no-analysis");
 const WriteReport = Args.includes("--report");
+// --snapshot-baseline records the current public API surface as the reference for future runs.
+const SnapshotBaseline = Args.includes("--snapshot-baseline");
 
 const Paint = process.stdout.isTTY
     ? { PASS: "\x1b[32m", FAIL: "\x1b[31m", WARN: "\x1b[33m", BLOCKED: "\x1b[35m", INFO: "\x1b[36m", DIM: "\x1b[2m", OFF: "\x1b[0m" }
@@ -407,6 +409,47 @@ async function Main() {
                     }
                 }
             }
+        }
+    }
+
+    //=========================================================
+    // Public API baseline snapshot / comparison
+    //=========================================================
+    if (Harness && (!OnlyFilter || OnlyFilter.includes("api"))) {
+        Headline("Public API surface");
+        const BaselineDir = join(Here, "baseline");
+        const BaselineFile = join(BaselineDir, "api.json");
+
+        const ApiSuite = Harness.Runner.get("GetSuite").call("api").at(0);
+        const SurfaceTable = ApiSuite.get("Snapshot").call().at(0);
+        const CurrentSurface = JSON.parse(String(Harness.Bridge.call(Harness.Runner, "ToJson", SurfaceTable)));
+
+        if (SnapshotBaseline || !existsSync(BaselineFile)) {
+            if (!existsSync(BaselineDir)) mkdirSync(BaselineDir, { recursive: true });
+            writeFileSync(BaselineFile, JSON.stringify(CurrentSurface, null, 2) + "\n");
+            let Count = 0;
+            for (const Entries of Object.values(CurrentSurface)) Count += Object.keys(Entries).length;
+            console.log(`  baseline ${SnapshotBaseline ? "written" : "created"}: ${relative(RepoRoot, BaselineFile)} (${Count} exports)`);
+            Record("API surface", "baseline", "PASS", `${Count} exports recorded`);
+        } else {
+            const Baseline = JSON.parse(readFileSync(BaselineFile, "utf8"));
+            const BaselineTable = lua.createTable();
+            for (const [ModuleName, Entries] of Object.entries(Baseline)) {
+                const EntryTable = lua.createTable();
+                for (const [Key, Value] of Object.entries(Entries)) EntryTable.set(Key, Value);
+                BaselineTable.set(ModuleName, EntryTable);
+            }
+            const Compared = ApiSuite.get("Compare").call(BaselineTable).at(0);
+            const Parsed = JSON.parse(String(Harness.Bridge.call(Harness.Runner, "ToJson", Compared)));
+            let Fail = 0;
+            for (const TestCase of Parsed) {
+                Record("API surface", TestCase.Name, TestCase.Status, TestCase.Detail);
+                if (TestCase.Status === "FAIL") {
+                    Fail += 1;
+                    console.log(`${Paint.FAIL}  FAIL${Paint.OFF} api.${TestCase.Name}: ${TestCase.Detail}`);
+                }
+            }
+            console.log(`  ${Parsed.length} comparison case(s), ${Fail} failure(s)`);
         }
     }
 

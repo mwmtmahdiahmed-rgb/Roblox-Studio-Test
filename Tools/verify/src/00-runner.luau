@@ -133,6 +133,10 @@ local function RunSuiteByName(Name)
     return ToJson(Results)
 end
 
+function Handle.GetSuite(Name)
+    return Suites[Name]
+end
+
 function Handle.RunSuite(Name)
     local Ok, Result = pcall(RunSuiteByName, Name)
     if not Ok then

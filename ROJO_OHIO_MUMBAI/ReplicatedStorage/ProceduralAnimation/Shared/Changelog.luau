@@ -133,6 +133,42 @@ Changelog.Entries = {
         File = "AnimationConfigCompile, ProceduralAnimator",
         Reason = "pairs() order is unspecified; a fixed order keeps additive wave results reproducible.",
     },
+    {
+        Version = "1.0.2",
+        Description = "Split ProceduralAnimator (1407 lines) into eight modules; every script is now under the 500-line limit.",
+        File = "ProceduralAnimator, ClientPosePipeline, ClientRigKinematics, CharacterLifecycle, CharacterMotionState, CharacterJoints, StatePool, PoseBuffer",
+        Reason = "Phase 3 architectural reorganization. The animator now holds only the heartbeat, the public API and init wiring (448 lines). Bodies were relocated unchanged; the extraction targets were chosen so each module owns one concern and none requires the animator back.",
+    },
+    {
+        Version = "1.0.2",
+        Description = "Added PoseBuffer as a leaf module owning the 12-byte-per-joint stride and the additive/blend writers.",
+        File = "PoseBuffer",
+        Reason = "Both the pose pipeline and the kinematics module write the pose buffer. Giving them a shared leaf module avoids a ClientPosePipeline <-> ClientRigKinematics require cycle.",
+    },
+    {
+        Version = "1.0.2",
+        Description = "Added StatePool, and replaced the captured ActiveStateCount with a live read.",
+        File = "StatePool, ProceduralAnimator, CharacterLifecycle",
+        Reason = "The character registry was duplicated across the split. Capturing StatePool.Count into a local froze it at 0, silently disabling SetPreviewMode and SetLocomotionWeight; it is now read through a getter.",
+    },
+    {
+        Version = "1.0.2",
+        Description = "Live flags are injected as getters rather than values (IsPreviewMode).",
+        File = "ProceduralAnimator, ClientPosePipeline, CharacterLifecycle",
+        Reason = "SetPreviewMode mutates a local owned by the animator. Passing the value copied it at construction, so the extracted modules never saw an update.",
+    },
+    {
+        Version = "1.0.2",
+        Description = "Added the offline verification harness with six suites and a public-API baseline.",
+        File = "Tools/verify/*",
+        Reason = "Play mode is not permitted, so correctness is established by a real Luau VM with mocked Roblox types. The api suite compares the exported surface structurally against baseline/api.json (136 exports), so refactors can be proven non-breaking rather than asserted.",
+    },
+    {
+        Version = "1.0.2",
+        Description = "The API surface comparison describes arrays by element shape instead of by index.",
+        File = "Tools/verify/LuaTests/06-api-suite.luau",
+        Reason = "Appending a Changelog entry changed the fingerprint of Changelog.Entries and was reported as an API break. Appending a record is not a contract change; losing or reshaping the record type is, and that is still caught.",
+    },
 }
 
 --=========================================================
