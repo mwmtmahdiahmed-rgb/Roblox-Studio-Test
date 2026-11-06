@@ -136,3 +136,25 @@ Findings deliberately **not** applied:
    parity by inspection only.
 
 Gate at this addendum: **PASS 437 | FAIL 0** (28/28 compile; Analysis 0 errors / 0 warnings / 40 gaps).
+## Addendum — 2026-11-06: server relay defense (branch arena/d93936b0-roblox-studio-test, changelog 1.1.13)
+
+The deep audit's open finding is closed in code, verified deterministically. `AnimationNetwork.luau`
+(499 lines, within the 500 cap) now rate-limits both server relay channels with per-sender token
+buckets derived from `Config.SendRate` (no new config keys): pose packets burst up to `SendRate`
+and refill at `SendRate`/second; the event relay bursts the same and refills at half that. The
+`EventRemote` relay additionally gained the registered-player gate that `OnServerPose` already had.
+No packet-format change, no public API change (API baseline untouched), no `Config.Version` bump.
+
+Test evidence: new `Tools/verify/LuaTests/08-relay-defense-suite.luau` (11 cases) proves the burst
+capacity, over-capacity drop, full-second refill, idle clamp at burst, sequence-gate independence
+from tokens, the event registered-player gate, and the event flood limit. Assertions use probe
+deltas because the suites share one VM and one set of remotes (gaining a handler per re-init;
+`ServerSentCount` counts one `FireClient` per *other registered player*) — absolute counts are VM
+state, not a correctness signal. The harness's virtual clock (`Env.AdvanceClock`) makes every
+case deterministic. First iterations of the suite mis-set `PoseRemote.Sender` (stale shared state
+from suite 03) and asserted absolute counts — both diagnosed and fixed; the suite is robust to
+registry size by construction.
+
+Gate at this addendum: **PASS 448 | FAIL 0** (28/28 compile; Analysis 0 errors / 0 warnings / 40
+gaps). `bootstrap.size.under500` confirms the framework remains at the 500-line cap. Play mode was
+never entered and is still not authorized.

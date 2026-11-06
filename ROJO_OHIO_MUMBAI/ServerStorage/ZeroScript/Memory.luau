@@ -38,7 +38,7 @@ Slop Game (placeId 139066482915692). Procedural animation framework for R15 avat
 - Velocity low-pass (Config.VelocityFilterRate, 0 disables) feeds the locomotion blend; State.FilteredSpeed persists it
 - Arc-length tables: precomputed at CompileSpline (64 chord segments, (Time, Value) graph); SampleSplineAtDistance is constant-speed sampling
 - Look-at is additive yaw/pitch on the neck in the root's frame, after IK, before ApplyPose; nil fades out
-- Studio MCP is BLOCKED in this environment; all verification is the local harness (Tools/verify, PASS 437 | FAIL 0, 28/28 compile). Harness chunks (src/0Nb-*.luau) were split 2026-11-06 to fit the 500-line rule and all carry --!strict; LuaTests specs are documented-exempt from the 500-line cap.
+- Studio MCP is BLOCKED in this environment; all verification is the local harness (Tools/verify, PASS 448 | FAIL 0, 28/28 compile). Harness chunks (src/0Nb-*.luau) were split 2026-11-06 to fit the 500-line rule and all carry --!strict; LuaTests specs are documented-exempt from the 500-line cap.
 - GitHub is the source of truth for code; Memory.md documents Studio-side observations only
 
 ## Phase status

@@ -394,6 +394,15 @@ moved under the correct `## 1.0.5` heading (entry text unchanged) and the duplic
 
 ---
 
+## 1.1.13
+
+### Server relay defense: additive token-bucket rate limiter on both relay channels; event channel gated to registered players.
+
+- **Affected:** ROJO_OHIO_MUMBAI/ReplicatedStorage/ProceduralAnimation/Shared/AnimationNetwork.luau, Tools/verify/LuaTests/08-relay-defense-suite.luau (new), README.md, Tools/verify/README.md, Documentation/Maintenance.md, Documentation/Memory.md, Documentation/Audit.md, Documentation/Changelog.md, ROJO_OHIO_MUMBAI/ReplicatedStorage/ProceduralAnimation/Shared/Changelog.luau
+- **Reason:** The deep audit (1.1.12) found no server-side rate limiting on the relay paths; a flooding sender cost O(other players) relay fires per packet and the event channel relayed for unregistered senders. The limiter is additive and server-side only: buckets derive from the existing Config.SendRate (burst = SendRate; pose refill = SendRate/s; event refill = half), idle buckets clamp at burst, no new config keys, no packet-format change (frozen), no public API change (baseline untouched), Config.Version stays 1.1.0. Verified by the new suite under the harness virtual clock — burst, capacity drop, refill, idle clamp, sequence-gate independence, event gate and event flood are all asserted via probe deltas, because suites share one VM and one set of remotes (ServerSentCount counts FireClient fires per other registered player). Gate: PASS 448 | FAIL 0. Play mode never entered.
+
+---
+
 ## Entry format
 
 ```

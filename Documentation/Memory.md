@@ -94,7 +94,7 @@ all lifecycle logic and expose `Destroy`.
 |---|---|---|
 | `Config/Data/ConfigData` | 494 | Constants, joint indices, clip authoring, gesture/FABRIK/wave data, `VelocityFilterRate` / `SquashStretch` / `LookAt` (all new top-level keys) |
 | `Math/Core/MathCore` | 485 | Easing, lerp, slerp, shortest-angle, smoothing, `StepSpring` |
-| `AnimationNetwork` | 472 | Remotes, server relay, client jitter buffer, quantization, send/receive |
+| `AnimationNetwork` | 499 | Remotes, server relay (+ token-bucket rate limiting: pose & event channels), client jitter buffer, quantization, send/receive |
 | `Math/Curves/MathCurves` | 336 | Bezier, spline compilation/sampling, compile-time arc-length tables |
 | `Changelog` | 249 | Append-only change history + capped runtime log |
 | `Config/Data/ConfigMotion` | 120 | Clip authoring helpers, motion curves |
@@ -286,8 +286,9 @@ analysis are genuine.
 | `bootstrap` | 26 | Both bootstrappers execute, lifecycle, require graph acyclic, size rule |
 | `api` | 2 | Frozen surface vs `baseline/api.json` (additions reported, not failed) |
 | `lifecycle` | 50 | Connection tracker, `Destroy`/`Shutdown`, player tracking, no bare connects |
+| `relaydefense` | 11 | Server relay hardening: token-bucket rate limiter (pose + event channels), registered-player gate on events, sequence gate independent of tokens; probe-delta assertions (shared VM, shared remotes) |
 
-**Latest result (2026-11-06, `main` @ `4bfc7e7` via PR #9; re-verified on branch arena/d93936b0-roblox-studio-test): PASS 437 | FAIL 0 |
+**Latest result (2026-11-06, `main` @ `4bfc7e7` via PR #9; re-verified on branch arena/d93936b0-roblox-studio-test + relay-defense work): PASS 448 | FAIL 0 |
 BLOCKED 0, 28/28 files compile, analysis 0 errors / 0 warnings / 40 pre-existing definition
 gaps. (On branch arena/4e24aa26-roblox-studio-test: PASS 433.)**
 
@@ -412,6 +413,13 @@ list, previously only 4 of 7 chunks — `04-testkit.luau` was silently uncompile
   PR and on `main` (run `42178478823`).
   Docs re-sync (changelog 1.1.9) reached `main` as `4bfc7e7` via PR #9 (2026-11-06T07:31Z); CI green on the
   PR and on `main` (run `42181483389`).
+- **Relay defense (2026-11-06, 1.1.13)** — server-side token-bucket rate limiter added to `AnimationNetwork.luau`
+  (both relay channels, derived from `Config.SendRate`, no new config keys, **no packet-format or API change**);
+  `OnServerEvent` gained the registered-player gate `OnServerPose` already had. New suite `LuaTests/08-relay-defense-suite.luau`
+  (11 cases) verifies burst capacity, drop-at-capacity, refill, idle clamp, sequence-gate independence, event gate + flood.
+  **Harness lesson:** suites share one VM and remotes persist across suites (`EnsureRemote` finds-or-creates; re-init idempotent);
+  `ServerSentCount` counts one `FireClient` per *other registered player* — assert probe deltas, never absolute counts, and never
+  rely on `PoseRemote.Sender` left by an earlier suite. Gate: **PASS 448 | FAIL 0**.
 - **Deep audit (2026-11-06, 1.1.12, Audit.md addendum)** — evidence sweeps clean (no TODO/FIXME; no OOP/metatables; no
   `wait`; exactly one init-time `Instance.new`; no repeated `GetDescendants`); relay path verified by inspection
   (magic, length, sequence dedupe, jointCount x bytes cross-check, angle/NaN validation, teleport threshold).

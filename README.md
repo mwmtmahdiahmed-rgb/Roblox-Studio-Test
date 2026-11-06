@@ -48,7 +48,7 @@ node changelog-check.mjs     # changelog parity: Documentation vs runtime copy
 node bench.mjs               # optional micro-benchmarks (same machine only)
 ```
 
-Expected: **Compilation 28/28 · Analysis 0 errors / 0 warnings · Cases PASS 437 | FAIL 0**.
+Expected: **Compilation 28/28 · Analysis 0 errors / 0 warnings · Cases PASS 448 | FAIL 0**.
 CI (`.github/workflows/verify.yml`) runs the same three commands on every push/PR to `main`
 and `arena/**`.
 

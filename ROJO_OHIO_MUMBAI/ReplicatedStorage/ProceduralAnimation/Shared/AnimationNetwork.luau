@@ -1,22 +1,12 @@
 --!strict
 -- ProceduralAnimation/Shared/AnimationNetwork
--- Owns every remote, the bindable event bus and the server relay for pose packets.
--- UnreliableRemoteEvent: per-frame pose packets.
--- RemoteEvent: one-shot events (setup, clip start, clip stop, landing, gesture start).
--- BindableEvent: same-side communication between the animator and this module.
---
--- Note on the bindable bus: BindableEvents do NOT replicate their connections, so each side
--- creates its own local bus instance. The server also parents a bus under Remotes for
--- discoverability; the client intentionally ignores that replicated copy and uses a local one.
---
--- Split for the line cap: the packet layout, the buffer and math aliases and the
--- quantization constants live in AnimationNetworkConstants, and the client jitter
--- buffers in AnimationNetworkReceive. Both are required below, so the public surface
--- and the packet layout are exactly what they were.
+-- Owns every remote, the bindable event bus and the server relay.
+-- (UnreliableRemoteEvent: poses; RemoteEvent: one-shots; BindableEvent: same-side bus.)
+-- Split for the line cap: packet layout + math aliases live in AnimationNetworkConstants,
+-- client jitter buffers in AnimationNetworkReceive; public surface and packet layout unchanged.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
--- Required by ConnectServer: Constants caches the unbound GetPlayers method, so the
--- service instance has to be passed as its first argument (PlayersGetPlayers(Players)).
+-- Constants caches the unbound GetPlayers method; pass the service instance (PlayersGetPlayers(Players)).
 local Players = game:GetService("Players")
 
 local Config = require(script.Parent.AnimationConfig)
@@ -27,8 +17,7 @@ local Constants = require(script.Parent.Networking.Constants.NetworkConstants)
 local Network: { [string]: any } = {}
 local Private: { [string]: any } = {}
 
--- The receive module writes HasRemotePose, SampleRemotePose and ReleaseRemotePose
--- straight onto Network and returns OnClientPose through Private.
+-- NetworkReceive writes HasRemotePose/SampleRemotePose/ReleaseRemotePose onto Network.
 require(script.Parent.Networking.Receive.NetworkReceive)(Network, Private)
 local OnClientPose = Private.OnClientPose
 
@@ -68,15 +57,15 @@ local VelocityScale = Constants.VelocityScale
 local MaxAngleRadians = Constants.MaxAngleRadians
 local WriteClampedI16 = Constants.WriteClampedI16
 local ReadClampedI16 = Constants.ReadClampedI16
+local Clock = Constants.Clock
 
 --=========================================================
 -- [2] BUFFERS
 --=========================================================
 
--- One send buffer, created once. Never re-created per frame.
-local SendBuffer = BufferCreate(SendBufferSize)
+local SendBuffer = BufferCreate(SendBufferSize) -- created once at load, reused every frame
 
--- Server relay bookkeeping. Array-indexed player list, swap-removed on leave.
+-- Server relay bookkeeping: array-indexed player list, swap-removed on leave.
 local ServerPlayerStates: { [any]: any } = {}
 local ServerPlayerCount = 0
 local ServerPlayerList: { [number]: any } = {}
@@ -86,7 +75,7 @@ local Shutdown = false
 local PoseRemote: any = nil
 local EventRemote: any = nil
 
--- Every engine connection this module makes is recorded here so Shutdown can release it all.
+-- Connections are recorded here so Shutdown can release them all.
 local ConnectionTracker = Connections.New()
 local BusEvent: any = nil
 local RemotesFolder: any = nil
@@ -208,6 +197,27 @@ end
 -- [7] SERVER RELAY + VALIDATION
 --=========================================================
 
+-- Server rate limiting: one token bucket per sender, derived from Config.SendRate (no new
+-- config keys). Pose packets burst up to SendRate and refill at SendRate/second; the event
+-- channel bursts the same and refills at half that (events are supposed to be rare). Idle
+-- buckets never accumulate beyond the burst. Deterministic under the harness virtual clock.
+local RatePoseBurst, RatePoseRefill = Config.SendRate, Config.SendRate
+local RateEventBurst, RateEventRefill = Config.SendRate, Config.SendRate / 2
+
+local function TakeToken(Bucket: any, Burst: number, Refill: number, Now: number): boolean
+    local Elapsed = Now - Bucket.LastRefill
+    if Elapsed > 0 then
+        local Refilled = Bucket.Tokens + Elapsed * Refill
+        Bucket.Tokens = Refilled > Burst and Burst or Refilled
+        Bucket.LastRefill = Now
+    end
+    if Bucket.Tokens < 1 then
+        return false
+    end
+    Bucket.Tokens -= 1
+    return true
+end
+
 local function RegisterPlayerInternal(Player: any): ()
     if ServerPlayerStates[Player] then
         return
@@ -218,6 +228,8 @@ local function RegisterPlayerInternal(Player: any): ()
         Warned = false,
         Received = 0,
         Dropped = 0,
+        PoseRate = { Tokens = RatePoseBurst, LastRefill = Clock() },
+        EventRate = { Tokens = RateEventBurst, LastRefill = Clock() },
     }
     ServerPlayerCount += 1
     ServerPlayerList[ServerPlayerCount] = Player
@@ -286,6 +298,12 @@ local function OnServerPose(Player: any, Packet: any): ()
 
     local State = ServerPlayerStates[Player]
     if not State then
+        return
+    end
+
+    -- Rate limit before any decode work; floods cost the server almost nothing.
+    if not TakeToken(State.PoseRate, RatePoseBurst, RatePoseRefill, Clock()) then
+        State.Dropped += 1
         return
     end
 
@@ -358,6 +376,15 @@ local function OnServerEvent(Player: any, EventId: any, Value: any): ()
     end
     if TypeOf(Value) ~= "number" then
         Value = 0
+    end
+    -- Match the pose path: unregistered senders are ignored; spam is throttled to half rate.
+    local State = ServerPlayerStates[Player]
+    if not State then
+        return
+    end
+    if not TakeToken(State.EventRate, RateEventBurst, RateEventRefill, Clock()) then
+        State.Dropped += 1
+        return
     end
     for Index = 1, ServerPlayerCount do
         local Other = ServerPlayerList[Index]
