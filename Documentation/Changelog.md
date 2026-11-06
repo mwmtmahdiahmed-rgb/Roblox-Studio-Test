@@ -367,6 +367,42 @@ moved under the correct `## 1.0.5` heading (entry text unchanged) and the duplic
 
 ---
 
+## 1.1.10
+
+### Docs re-synced to merged main (4bfc7e7, PR #9).
+
+- **Affected:** Documentation/Memory.md, ROJO_OHIO_MUMBAI/ServerStorage/ZeroScript/Memory.luau, Documentation/Changelog.md, ROJO_OHIO_MUMBAI/ReplicatedStorage/ProceduralAnimation/Shared/Changelog.luau
+- **Reason:** Same post-merge re-sync convention as after PRs #7 and #8: the living memory docs must name the newest merge commit (4bfc7e7, PR #9, CI run 42181483389) and the branch they were re-verified on. No code, harness, or framework behaviour changed; gate unchanged (PASS 437 | FAIL 0); Config.Version stays 1.1.0.
+
+---
+
+## 1.1.11
+
+### Whole-repo audit: root README.md written; JavaScript audited as load-bearing.
+
+- **Affected:** README.md (new), Documentation/Memory.md, Documentation/Changelog.md, ROJO_OHIO_MUMBAI/ReplicatedStorage/ProceduralAnimation/Shared/Changelog.luau
+- **Reason:** The repository's public landing page was an empty stub despite the project being documentation-first; the four .mjs files audited as fully load-bearing (verify/rojo-check/changelog-check wired into CI, bench documented in README/Maintenance), one pinned dependency, no unused code found; no Luau, harness, or packet-layout change; gate re-run unchanged (PASS 437 | FAIL 0); all README internal links verified. Config.Version stays 1.1.0.
+
+---
+
+## 1.1.12
+
+### Deep audit addendum (Audit.md): sweeps clean; relay rate limiting recorded as an open decision, not applied.
+
+- **Affected:** Documentation/Audit.md, Documentation/Memory.md, Documentation/Changelog.md, ROJO_OHIO_MUMBAI/ReplicatedStorage/ProceduralAnimation/Shared/Changelog.luau
+- **Reason:** Directive pass (Phase 0 discovery + Phase 8 audit): every candidate micro-optimization or behavioral change found either risked the frozen packet format/API or could not be verified honestly (the offline harness's mocked clock is frozen at 0, so a time-based relay throttle would silently drop all test traffic). Findings are recorded in Audit.md; no framework or harness code changed; gate unchanged (PASS 437 | FAIL 0); Config.Version stays 1.1.0.
+
+---
+
+## 1.1.13
+
+### Server relay defense: additive token-bucket rate limiter on both relay channels; event channel gated to registered players.
+
+- **Affected:** ROJO_OHIO_MUMBAI/ReplicatedStorage/ProceduralAnimation/Shared/AnimationNetwork.luau, Tools/verify/LuaTests/08-relay-defense-suite.luau (new), README.md, Tools/verify/README.md, Documentation/Maintenance.md, Documentation/Memory.md, Documentation/Audit.md, Documentation/Changelog.md, ROJO_OHIO_MUMBAI/ReplicatedStorage/ProceduralAnimation/Shared/Changelog.luau
+- **Reason:** The deep audit (1.1.12) found no server-side rate limiting on the relay paths; a flooding sender cost O(other players) relay fires per packet and the event channel relayed for unregistered senders. The limiter is additive and server-side only: buckets derive from the existing Config.SendRate (burst = SendRate; pose refill = SendRate/s; event refill = half), idle buckets clamp at burst, no new config keys, no packet-format change (frozen), no public API change (baseline untouched), Config.Version stays 1.1.0. Verified by the new suite under the harness virtual clock — burst, capacity drop, refill, idle clamp, sequence-gate independence, event gate and event flood are all asserted via probe deltas, because suites share one VM and one set of remotes (ServerSentCount counts FireClient fires per other registered player). Gate: PASS 448 | FAIL 0. Play mode never entered.
+
+---
+
 ## Entry format
 
 ```

@@ -362,6 +362,30 @@ Changelog.Entries = {
         File = "Documentation/Memory.md, ROJO_OHIO_MUMBAI/ServerStorage/ZeroScript/Memory.luau, Documentation/Changelog.md, ROJO_OHIO_MUMBAI/ReplicatedStorage/ProceduralAnimation/Shared/Changelog.luau",
         Reason = "Post-merge re-sync, same convention as after PR #7: the memory docs must name the merge commit (3ca2731, PR #8, CI run 42178478823) and the branch they were re-verified on, otherwise a cold-start engineer is told to look at a stale main tip. No code, harness, or framework behaviour changed; gate unchanged (PASS 437 | FAIL 0); Config.Version stays 1.1.0.",
     },
+    {
+        Version = "1.1.10",
+        Description = "Docs re-synced to merged main (4bfc7e7, PR #9): Memory.md and ZeroScript/Memory.luau point at current main; PRs #8/#9 merges and CI runs recorded.",
+        File = "Documentation/Memory.md, ROJO_OHIO_MUMBAI/ServerStorage/ZeroScript/Memory.luau, Documentation/Changelog.md, ROJO_OHIO_MUMBAI/ReplicatedStorage/ProceduralAnimation/Shared/Changelog.luau",
+        Reason = "Same post-merge re-sync convention as after PRs #7 and #8: the living memory docs must name the newest merge commit (4bfc7e7, PR #9, CI run 42181483389) and the branch they were re-verified on. No code, harness, or framework behaviour changed; gate unchanged (PASS 437 | FAIL 0); Config.Version stays 1.1.0.",
+    },
+    {
+        Version = "1.1.11",
+        Description = "Whole-repo audit under the complete-optimization directive: root README.md written (was a bare heading); JavaScript tooling audited — no removable JavaScript; bench.mjs evidence recorded on-machine.",
+        File = "README.md (new), Documentation/Memory.md, Documentation/Changelog.md, ROJO_OHIO_MUMBAI/ReplicatedStorage/ProceduralAnimation/Shared/Changelog.luau",
+        Reason = "The repository's public landing page was an empty stub despite the project being documentation-first; the four .mjs files audited as fully load-bearing (verify/rojo-check/changelog-check wired into CI, bench documented in README/Maintenance), one pinned dependency, no unused code found; no Luau, harness, or packet-layout change; gate re-run unchanged (PASS 437 | FAIL 0); all README internal links verified. Config.Version stays 1.1.0.",
+    },
+    {
+        Version = "1.1.12",
+        Description = "Deep audit addendum under the whole-repo optimization directive: evidence sweeps clean; server relay path and lifecycle verified by inspection; findings (no rate limiting, EventRemote gate) recorded but deliberately not applied.",
+        File = "Documentation/Audit.md, Documentation/Memory.md, Documentation/Changelog.md, ROJO_OHIO_MUMBAI/ReplicatedStorage/ProceduralAnimation/Shared/Changelog.luau",
+        Reason = "Directive pass (Phase 0 discovery + Phase 8 audit): every candidate micro-optimization or behavioral change found either risked the frozen packet format/API or could not be verified honestly (the offline harness's mocked clock is frozen at 0, so a time-based relay throttle would silently drop all test traffic). Findings are recorded in Audit.md; no framework or harness code changed; gate unchanged (PASS 437 | FAIL 0); Config.Version stays 1.1.0.",
+    },
+    {
+        Version = "1.1.13",
+        Description = "Server relay defense: token-bucket rate limiter on the pose and event relay channels (derived from Config.SendRate; no new config keys; no packet-format or API change); registered-player gate added to OnServerEvent; new relaydefense suite (11 deterministic cases).",
+        File = "ROJO_OHIO_MUMBAI/ReplicatedStorage/ProceduralAnimation/Shared/AnimationNetwork.luau, Tools/verify/LuaTests/08-relay-defense-suite.luau (new), README.md, Tools/verify/README.md, Documentation/Maintenance.md, Documentation/Memory.md, Documentation/Audit.md, Documentation/Changelog.md, ROJO_OHIO_MUMBAI/ReplicatedStorage/ProceduralAnimation/Shared/Changelog.luau",
+        Reason = "The deep audit (1.1.12) found no server-side rate limiting on the relay paths; a flooding sender cost O(other players) relay fires per packet and the event channel relayed for unregistered senders. The limiter is additive and server-side only: buckets derive from the existing Config.SendRate (burst = SendRate; pose refill = SendRate/s; event refill = half), idle buckets clamp at burst, no new config keys, no packet-format change (frozen), no public API change (baseline untouched), Config.Version stays 1.1.0. Verified by the new suite under the harness virtual clock — burst, capacity drop, refill, idle clamp, sequence-gate independence, event gate and event flood are all asserted via probe deltas, because suites share one VM and one set of remotes (ServerSentCount counts FireClient fires per other registered player). Gate: PASS 448 | FAIL 0. Play mode never entered.",
+    },
 }
 
 --=========================================================

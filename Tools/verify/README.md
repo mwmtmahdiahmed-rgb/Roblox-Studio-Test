@@ -17,7 +17,7 @@ node bench.mjs              # comparative micro-benchmarks (same machine only)
 
 `changelog-check.mjs` exits non-zero unless both changelog copies agree (16 sections, 55 entries today; both must hold in every version).
 
-Exit code is non-zero unless **Compilation 28/28, Analysis 0 errors/0 warnings, Cases 437**.
+Exit code is non-zero unless **Compilation 28/28, Analysis 0 errors/0 warnings, Cases 448**.
 The 40 "definition gaps" are a classification of engine-boundary expressions the partial,
 hand-written `roblox-definitions.luau` cannot model — they are not failures, and
 `roblox-definitions.luau` missing or rejected is a hard FAIL (it is what makes analysis see
@@ -39,7 +39,7 @@ Chunks are loaded by `verify.mjs` in dependency order and hand each other their 
 as arguments (`Mock`, `Env`) rather than requiring each other — keep that composition when
 editing. Every harness chunk is also compiled by `verify.mjs` (the `MockFiles` list) and must
 open with `--!strict`.
-| `LuaTests/*.luau` | The suites: `01` math · `02` config · `03` network · `04` integration · `05` bootstrap · `06` api · `07` lifecycle |
+| `LuaTests/*.luau` | The suites: `01` math · `02` config · `03` network · `04` integration · `05` bootstrap · `06` api · `07` lifecycle · `08` relaydefense |
 | `roblox-definitions.luau` | Partial hand-written Roblox API surface for the checker |
 | `baseline/api.json` | **Frozen** public API surface (138 exports / 6 modules + network layout). Never edited by hand; `--snapshot-baseline` only with an explicit, reviewed decision |
 | `bench.mjs` | Comparative benchmarks; numbers are machine-dependent and prove nothing about live runtime |

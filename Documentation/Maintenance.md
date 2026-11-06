@@ -15,7 +15,7 @@ and the harness disagree, the harness wins.
 ```bash
 cd Tools/verify
 npm ci                      # first time only (lockfile-pinned)
-node verify.mjs             # full gate: compile + analysis + 7 suites + API baseline
+node verify.mjs             # full gate: compile + analysis + 8 suites + API baseline
 node verify.mjs --only=math # one suite
 node rojo-check.mjs         # project-file integrity
 node changelog-check.mjs    # changelog parity: md copy vs runtime copy (versions + entry counts)
@@ -26,7 +26,7 @@ Every push/PR to `main` or `arena/**` runs the same commands on GitHub Actions
 (`.github/workflows/verify.yml`) — the gate must be green before merge; it has no secrets.
 
 Expected: `Compilation 28 pass / 0 fail`, `Analysis 0 errors / 0 warnings / 40 gaps`,
-`Cases PASS 437 | FAIL 0`. The 40 definition gaps are pre-existing and classified, not
+`Cases PASS 448 | FAIL 0`. The 40 definition gaps are pre-existing and classified, not
 failures; a missing `roblox-definitions.luau` is a hard FAIL.
 
 ## 2. 500-line rule & file placement

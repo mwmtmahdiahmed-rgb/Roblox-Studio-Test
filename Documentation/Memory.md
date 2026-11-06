@@ -4,7 +4,7 @@
 > finished, what is broken, and what to do next. If this file and the source disagree,
 > **the source wins** — and this file is then wrong and must be corrected.
 
-Last verified: 2026-11-06, `main` @ `3ca2731` (PR #6 `5cda17d`, PR #7 `5109f27`, PR #8 `3ca2731`); re-verified on branch `arena/e74c25b4-roblox-studio-test`.
+Last verified: 2026-11-06, `main` @ `4bfc7e7` (PR #6 `5cda17d`, PR #7 `5109f27`, PR #8 `3ca2731`, PR #9 `4bfc7e7`); re-verified on branch `arena/d93936b0-roblox-studio-test`.
 
 ---
 
@@ -94,7 +94,7 @@ all lifecycle logic and expose `Destroy`.
 |---|---|---|
 | `Config/Data/ConfigData` | 494 | Constants, joint indices, clip authoring, gesture/FABRIK/wave data, `VelocityFilterRate` / `SquashStretch` / `LookAt` (all new top-level keys) |
 | `Math/Core/MathCore` | 485 | Easing, lerp, slerp, shortest-angle, smoothing, `StepSpring` |
-| `AnimationNetwork` | 472 | Remotes, server relay, client jitter buffer, quantization, send/receive |
+| `AnimationNetwork` | 499 | Remotes, server relay (+ token-bucket rate limiting: pose & event channels), client jitter buffer, quantization, send/receive |
 | `Math/Curves/MathCurves` | 336 | Bezier, spline compilation/sampling, compile-time arc-length tables |
 | `Changelog` | 249 | Append-only change history + capped runtime log |
 | `Config/Data/ConfigMotion` | 120 | Clip authoring helpers, motion curves |
@@ -286,8 +286,9 @@ analysis are genuine.
 | `bootstrap` | 26 | Both bootstrappers execute, lifecycle, require graph acyclic, size rule |
 | `api` | 2 | Frozen surface vs `baseline/api.json` (additions reported, not failed) |
 | `lifecycle` | 50 | Connection tracker, `Destroy`/`Shutdown`, player tracking, no bare connects |
+| `relaydefense` | 11 | Server relay hardening: token-bucket rate limiter (pose + event channels), registered-player gate on events, sequence gate independent of tokens; probe-delta assertions (shared VM, shared remotes) |
 
-**Latest result (2026-11-06, `main` @ `3ca2731` via PR #8; re-verified on branch arena/e74c25b4-roblox-studio-test): PASS 437 | FAIL 0 |
+**Latest result (2026-11-06, `main` @ `4bfc7e7` via PR #9; re-verified on branch arena/d93936b0-roblox-studio-test + relay-defense work): PASS 448 | FAIL 0 |
 BLOCKED 0, 28/28 files compile, analysis 0 errors / 0 warnings / 40 pre-existing definition
 gaps. (On branch arena/4e24aa26-roblox-studio-test: PASS 433.)**
 
@@ -410,6 +411,27 @@ list, previously only 4 of 7 chunks — `04-testkit.luau` was silently uncompile
   Changelogs 1.1.6–1.1.8 (1.1.7: 1.0.5 entries moved under the correct heading, byte-identical, duplicate removed;
   1.1.8: `changelog-check.mjs` parity gate) reached `main` as `3ca2731` via PR #8 (2026-11-06T07:04Z); CI green on the
   PR and on `main` (run `42178478823`).
+  Docs re-sync (changelog 1.1.9) reached `main` as `4bfc7e7` via PR #9 (2026-11-06T07:31Z); CI green on the
+  PR and on `main` (run `42181483389`).
+- **Relay defense (2026-11-06, 1.1.13)** — server-side token-bucket rate limiter added to `AnimationNetwork.luau`
+  (both relay channels, derived from `Config.SendRate`, no new config keys, **no packet-format or API change**);
+  `OnServerEvent` gained the registered-player gate `OnServerPose` already had. New suite `LuaTests/08-relay-defense-suite.luau`
+  (11 cases) verifies burst capacity, drop-at-capacity, refill, idle clamp, sequence-gate independence, event gate + flood.
+  **Harness lesson:** suites share one VM and remotes persist across suites (`EnsureRemote` finds-or-creates; re-init idempotent);
+  `ServerSentCount` counts one `FireClient` per *other registered player* — assert probe deltas, never absolute counts, and never
+  rely on `PoseRemote.Sender` left by an earlier suite. Gate: **PASS 448 | FAIL 0**.
+- **Deep audit (2026-11-06, 1.1.12, Audit.md addendum)** — evidence sweeps clean (no TODO/FIXME; no OOP/metatables; no
+  `wait`; exactly one init-time `Instance.new`; no repeated `GetDescendants`); relay path verified by inspection
+  (magic, length, sequence dedupe, jointCount x bytes cross-check, angle/NaN validation, teleport threshold).
+  Open findings NOT applied: no server-side rate limiting on `PoseRemote`/`EventRemote` (harness clock frozen at 0 —
+  naive throttle would drop all test traffic; needs authorized playtest or clock-aware harness suite);
+  `OnServerEvent` relay lacks the registered-player gate `OnServerPose` has; 40 definition gaps by design.
+- **Root `README.md` (2026-11-06, 1.1.11)** — was a bare `# Roblox-Studio-Test` heading; now documents the
+  layout, the offline gate, invariants (frozen packet layout, 500-line/strict rules) and limitations;
+  all internal doc links verified. The four `.mjs` files audited as fully load-bearing — **no removable
+  JavaScript**; single pinned dependency `@luau-rs/luau` 0.739.0; `bench.mjs` run on this machine:
+  SampleSpline 637 ns/op, SampleCompiledWave 1453 ns/op, Ease(1) 218 ns/op, Compact early-out 68 ns vs
+  1024 ns reference (machine-dependent, not committed anywhere).
 - **`Tools/verify/changelog-check.mjs` (2026-11-06, 1.1.8)** — permanent parity gate between the two
   changelog copies; asserts no duplicate version headers, ascending order, non-empty sections,
   identical version sets and equal per-version entry counts (56/56). Wired into the CI gate and
