@@ -314,7 +314,8 @@ local function CreateR15Character(Name, Options)
     local Humanoid = HumanoidClass.new()
     Humanoid.Parent = Character
 
-    local Torso = MakePart(Character, "UpperTorso", Vector3New(2.0, 2.0, 1.0), Vector3New(0.0, 3.0, 0.0))
+    local UpperTorso = MakePart(Character, "UpperTorso", Vector3New(2.0, 2.0, 1.0), Vector3New(0.0, 3.0, 0.0))
+    local Torso = UpperTorso
     local LowerTorso = MakePart(Character, "LowerTorso", Vector3New(2.0, 1.0, 1.0), Vector3New(0.0, 2.0, 0.0))
     local Head = MakePart(Character, "Head", Vector3New(1.0, 1.0, 1.0), Vector3New(0.0, 4.5, 0.0))
 

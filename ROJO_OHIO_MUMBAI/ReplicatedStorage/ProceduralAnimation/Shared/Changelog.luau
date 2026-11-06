@@ -194,6 +194,30 @@ Changelog.Entries = {
         Reason = "Keeps the animator under 500 lines after the lifecycle work, and puts every player-level connection decision in one auditable file.",
     },
     {
+        Version = "1.0.5",
+        Description = "Wrote Tools/verify/roblox-definitions.luau and turned the Luau type checker on by default; a missing or rejected definition file is now a hard failure.",
+        File = "Tools/verify/roblox-definitions, Tools/verify/verify",
+        Reason = "Phase 3's last exit item. Without the definition file every Roblox global was reported as an unknown global, those were reclassified as 'definition gaps' and filtered out of the failures, so analysis looked green while checking almost nothing. The partial hand-written surface (game, script, Vector3, CFrame, Enum, Instance, task, RaycastParams, RBXScriptConnection) now lets the checker see the project's own code. Diagnostics went from 127 (1 error / 42 warnings / 84 gaps) to 0.",
+    },
+    {
+        Version = "1.0.5",
+        Description = "Fixed an uninitialised ApplyWorldDirection upvalue in ClientRigKinematics and an undefined UpperTorso global in the test mock.",
+        File = "ClientRigKinematics, Tools/verify/src/02-mock-services",
+        Reason = "Found by the newly enabled checker. 'local function ApplyWorldDirection' after 'local ApplyWorldDirection' shadows the forward declaration instead of assigning it, so the FABRIK spine chain called nil on every frame for any rig with a Chest joint. The mock bug (Neck.Part0/Waist.Part1/Chest.Part1 wired from an undefined global) made the rig structurally invalid and hid that path from every existing test. A new setup.withChest integration case now covers it.",
+    },
+    {
+        Version = "1.0.5",
+        Description = "Fixed a nil MathLib on the jump path and a bare ReleaseRemotePose call in AnimationNetwork.Shutdown.",
+        File = "CharacterMotionState, ClientPosePipeline, AnimationNetwork",
+        Reason = "Both found by the checker. MathLib was never passed to CharacterMotionState, so UpdateJump threw on every jump. ReleaseRemotePose lives on Network, so the shutdown loop called nil; it was masked only because the harness's server player list is empty at shutdown. Also fixed two vacuous jump tests that called Humanoid.SetState with a dot, leaving NewState nil so no StateChanged ever fired.",
+    },
+    {
+        Version = "1.0.5",
+        Description = "Removed 36 dead locals left behind by the Phase 3 module split and annotated QuaternionFromCFrame's return contract.",
+        File = "ProceduralAnimator, ClientPosePipeline, CharacterMotionState, ClientRigKinematics, CharacterLifecycle, AnimationNetwork, ConfigData, MathCore",
+        Reason = "Lint warnings from the enabled checker: re-bound pipeline thunks and constants that nothing called, a self-assignment (local Enum = Enum), duplicate shadowing Locomotion pairs, and unused service/require locals. Annotating QuaternionFromCFrame as returning four numbers also removes the last type error: the checker inferred the unannotated parameter as unknown rather than any, which poisoned the Dot product fed to Acos(Clamp(...)). Behaviour is unchanged; packet layout and public API are untouched.",
+    },
+    {
         Version = "1.0.4",
         Description = "Verification harness: Suite.Reset was declared but never invoked; ResetModuleCache dropped modules without running their teardown; script lifecycle handles were discarded.",
         File = "Tools/verify/src/00-runner.luau, src/03-env.luau, src/02-mock-services.luau",

@@ -15,7 +15,6 @@ return function(Dependencies)
 local Config = Dependencies.Config
 local MathLib = Dependencies.MathLib
 local Workspace = Dependencies.Workspace
-local Workspace = game:GetService("Workspace")
 local PoseBuffer = require(script.Parent.PoseBuffer)
 local WritePoseAdd = PoseBuffer.WritePoseAdd
 local WritePoseBlend = PoseBuffer.WritePoseBlend
@@ -28,7 +27,6 @@ local Abs = math.abs
 local Sqrt = math.sqrt
 local Exp = math.exp
 local Sin = math.sin
-local Cos = math.cos
 local Acos = math.acos
 local Clamp = math.clamp
 local CFrameAxisAngle = CFrame.fromAxisAngle
@@ -233,7 +231,7 @@ end
 
 -- Converts a desired world bone direction into a joint-space Euler offset and blends it into
 -- the pose buffer. Everything still goes through Motor6D.Transform.
-local function ApplyWorldDirection(State, JointIndexValue, DirectionX, DirectionY, DirectionZ, Weight)
+function ApplyWorldDirection(State, JointIndexValue, DirectionX, DirectionY, DirectionZ, Weight)
     local Joint = State.Joints[JointIndexValue]
     if not Joint then
         return

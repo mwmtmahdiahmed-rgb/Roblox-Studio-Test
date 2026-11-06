@@ -137,6 +137,46 @@ function Suite.Body(Cases)
         return true
     end)
 
+    --=========================================================
+    -- [2b] RIG WITH A CHEST JOINT (FABRIK CHAIN REACHABLE)
+    --=========================================================
+    -- The Spine FABRIK chain is Config.FabrikChains.Spine =
+    -- { Waist, Chest, Neck }. On stock R15 there is no Chest Motor6D, so the chain bails out
+    -- early and the solver path is never entered. A rig that DOES have a Chest joint is the only
+    -- configuration that exercises it, and it was untested: an uninitialised forward-declared
+    -- ApplyWorldDirection made this path throw on every frame.
+
+    Kit.Guard("setup.withChest", function()
+        -- The earlier stock-R15 spawn deliberately logged "Optional joint missing: Chest", so the
+        -- log history must be cleared before asserting that a Chest-bearing rig does NOT log it.
+        Env.ClearLogs()
+        Env.SetCharacter(LocalPlayer, nil)
+        local ChestCharacter, ChestOk = SpawnLocalCharacter({ IncludeChest = true })
+        Kit.True("setup.withChest.succeeds", ChestOk, "a rig with a Chest joint still sets up")
+        Kit.Nil("setup.withChest.noOptionalLog", Env.FindLog("Optional joint missing: Chest"))
+
+        -- Pump frames far enough for the idle clip and the spine chain to run.
+        Env.PumpFrames(20, 1.0 / 60.0)
+
+        -- If the FABRIK path threw, the heartbeat would have raised and the character would not
+        -- be animating. Assert the waist actually moved, which requires the whole pipeline
+        -- including UpdateFabrikChain to have completed.
+        local Waist = FindMotor(ChestCharacter, "Waist")
+        Kit.NotNil("setup.withChest.waistMotor", Waist)
+        if Waist then
+            local X, Y, Z = Waist.Transform:ToEulerAnglesXYZ()
+            local Changed = math.abs(X) + math.abs(Y) + math.abs(Z) > 0.0
+            Kit.True("setup.withChest.animates", Changed,
+                "pose advances with a 3-joint spine chain present")
+        end
+
+        Kit.NotNil("setup.withChest.stillValid", ChestCharacter)
+        Env.SetCharacter(LocalPlayer, nil)
+        ChestCharacter:Destroy()
+        Env.PumpFrames(2, 1.0 / 60.0)
+        return true
+    end)
+
     -- A rig without the RigType R15 must be refused.
     local R6Character = Env.CreateCharacter("R6Character")
     R6Character:FindFirstChildOfClass("Humanoid").RigType = _G.Enum.HumanoidRigType.R6
@@ -260,28 +300,52 @@ function Suite.Body(Cases)
     -- [5] JUMP STATE MACHINE
     --=========================================================
 
-    Humanoid.SetState(_G.Enum.HumanoidStateType.Jumping)
+    -- The mock's SetState is method-shaped, so it MUST be called with ':'. Called with '.'
+    -- the enum lands in HumanoidSelf, NewState is nil, no StateChanged fires, and every jump
+    -- assertion below passes without ever entering UpdateJump. That is how a nil MathLib
+    -- inside the jump path survived a green suite.
+    --
+    -- The bus subscriptions below give the assertions teeth: a transition that never reaches
+    -- the state machine cannot raise them.
+    local ClipStartEvents = 0
+    local LandingEvents = 0
+    Animator.BindToEvent("ClipStart", function()
+        ClipStartEvents += 1
+    end)
+    Animator.BindToEvent("Landing", function()
+        LandingEvents += 1
+    end)
+
+    Env.ClearLogs()
+    Humanoid:SetState(_G.Enum.HumanoidStateType.Jumping)
     Kit.Guard("jump.jumpingStateAccepted", function()
         Env.PumpFrames(2, 1.0 / 60.0)
         return true
     end)
-    Humanoid.SetState(_G.Enum.HumanoidStateType.Freefall)
+    Kit.Greater("jump.clipStartRaised", ClipStartEvents, 0,
+        "entering the jump must raise the clip-start bus event")
+
+    -- Anticipation runs before the airborne segment, so the pose must be driving by now.
+    Env.PumpFrames(5, 1.0 / 60.0)
+    Humanoid:SetState(_G.Enum.HumanoidStateType.Freefall)
     Env.PumpFrames(20, 1.0 / 60.0)
     Kit.True("jump.freefallRuns", true)
 
     -- Landing is detected from FloorMaterial, which is the fallback that catches ledge drops.
     Humanoid.SetFloorMaterial(_G.Enum.Material.Plastic)
-    local LandedLogged = false
-    Env.PumpFrames(30, 1.0 / 60.0)
-    Humanoid.SetState(_G.Enum.HumanoidStateType.Landed)
+    Humanoid:SetState(_G.Enum.HumanoidStateType.Landed)
+    Kit.Guard("jump.landingRaisesEvent", function()
+        Env.PumpFrames(2, 1.0 / 60.0)
+        return true
+    end)
+    Kit.Greater("jump.landingEventRaised", LandingEvents, 0,
+        "Landed while airborne must raise the landing bus event")
+
     Env.PumpFrames(60, 1.0 / 60.0)
-    Humanoid.SetState(_G.Enum.HumanoidStateType.Running)
+    Humanoid:SetState(_G.Enum.HumanoidStateType.Running)
     Humanoid.SetFloorMaterial(_G.Enum.Material.Air)
     Env.PumpFrames(30, 1.0 / 60.0)
     Kit.True("jump.landingCycleCompletes", true, "no throw across Jumping -> Freefall -> Landed -> Running")
-    if LandedLogged == false then
-        LandedLogged = nil
-    end
 
     --=========================================================
     -- [6] GESTURES

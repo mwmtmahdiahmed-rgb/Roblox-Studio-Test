@@ -1,7 +1,6 @@
 -- ProceduralAnimation/Shared/AnimationConfigData
 
 return function(Config, Private)
-local Rad = math.rad
 
 --=========================================================
 -- [1] CONSTANTS

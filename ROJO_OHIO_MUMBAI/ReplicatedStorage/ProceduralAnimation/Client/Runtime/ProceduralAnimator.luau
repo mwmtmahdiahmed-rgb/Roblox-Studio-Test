@@ -23,27 +23,14 @@ local MaxJoints = Config.MaxJoints
 local MaxGestures = Config.MaxGestures
 local MaxEventId = Config.MaxEventId
 
--- Buffer geometry comes from the leaf PoseBuffer module; it is the only place the stride and
--- length are defined.
-local PoseBufferLength = require(script.Parent.PoseBuffer).PoseBufferLength
-
 local GestureClips = Config.Compiled.Gestures
-local FabrikChains = Config.FabrikChains
-
-local JumpStateGrounded = 0
-local JumpStateAnticipation = 1
-local JumpStateLaunch = 2
-local JumpStateAirborne = 3
-local JumpStateLanding = 4
 
 -- Localised every global and library call used on the per-frame path.
 local Sqrt = math.sqrt
-local BufferCreate = buffer.create
 local Vector3New = Vector3.new
 local ProfileBegin = debug.profilebegin
 local ProfileEnd = debug.profileend
 local ProfilingEnabled = Config.ProfilingEnabled
-local PlayersGetPlayers = Players.GetPlayers
 
 --=========================================================
 -- [2] BUFFERS AND STATE POOL
@@ -52,7 +39,6 @@ local PlayersGetPlayers = Players.GetPlayers
 -- The character registry is shared with CharacterLifecycle and the heartbeat, so it lives in
 -- StatePool rather than here.
 local StatePool = require(script.Parent.StatePool)
-local CharacterStates = StatePool.States
 local ActiveStates = StatePool.Active
 -- Read through the pool: StatePool.Count changes as characters are added and removed, so a
 -- captured copy would go stale (that is exactly what broke SetPreviewMode and SetLocomotionWeight
@@ -134,26 +120,7 @@ local CharacterLifecycle = require(script.Parent.CharacterLifecycle)({
 })
 
 --=========================================================
--- [5] JOINT CACHE
---=========================================================
--- FindMotor6D, CacheJoints and CacheLimbLengths live in CharacterJoints; they are pure queries
--- of the rig and need nothing from this module.
-
-local FindMotor6D = CharacterJoints.FindMotor6D
-local CacheJoints = CharacterJoints.CacheJoints
-local CacheLimbLengths = CharacterJoints.CacheLimbLengths
-
---=========================================================
--- [6] LOCOMOTION WEIGHTS
---=========================================================
--- UpdateLocomotionWeights lives in ClientPosePipeline, because it feeds the same state the
--- per-frame pipeline consumes. Declared here so the heartbeat reads like it did before the split.
-
-local UpdateLocomotionWeights
-
-
---=========================================================
--- [8] POSE PIPELINE
+-- [5] POSE PIPELINE
 --=========================================================
 -- Clip sampling, the jump state machine, gestures, overlay blending and pose application live in
 -- ClientPosePipeline. The dependency table is built here, after every collaborator above exists,
@@ -177,21 +144,15 @@ local Pipeline = ClientPosePipeline({
     end,
 })
 
-local SampleKeyArray = Pipeline.SampleKeyArray
-local SampleClip = Pipeline.SampleClip
-local UpdateJump = Pipeline.UpdateJump
-local UpdateGestures = Pipeline.UpdateGestures
-local BlendJumpOverlay = Pipeline.BlendJumpOverlay
+-- Only the three entry points the heartbeat and the public API actually call are bound here;
+-- the rest of the pipeline's surface is reached through Pipeline directly. Re-binding the whole
+-- surface used to leave a dozen dead locals behind after the Phase 3 split.
 local FireBusEvent = Pipeline.FireBusEvent
-local ApplyPose = Pipeline.ApplyPose
-local ComputeRootOffset = Pipeline.ComputeRootOffset
 local UpdateLocalCharacter = Pipeline.UpdateLocalCharacter
 local UpdateRemoteCharacter = Pipeline.UpdateRemoteCharacter
 
-UpdateLocomotionWeights = Pipeline.UpdateLocomotionWeights
-
 --=========================================================
--- [10] HEARTBEAT
+-- [6] HEARTBEAT
 --=========================================================
 -- Kept in this module (rather than the pipeline) because it walks CharacterStates/ActiveStates,
 -- the state pool this module owns. It only calls into the pipeline to produce each pose.
@@ -242,15 +203,10 @@ local function OnHeartbeat(DeltaTime)
 
     -- Compact after the loop so a teardown during iteration never disturbs it.
     StatePool.Compact()
-    
 end
 
 --=========================================================
--- [11] PUBLIC API
---=========================================================
-
---=========================================================
--- [11] CHARACTER LIFECYCLE
+-- [7] CHARACTER LIFECYCLE
 --=========================================================
 -- CreateState, SetupCharacter and TeardownCharacter live in CharacterLifecycle. They own the
 -- fail-fast joint check, the rest-pose measurement and every connection each character holds.
@@ -407,6 +363,10 @@ local PlayerTracker = PlayerTrackerModule({
     SetupCharacter = SetupCharacter,
     TeardownCharacter = TeardownCharacter,
 })
+
+--=========================================================
+-- [8] PUBLIC API
+--=========================================================
 
 function Animator.Init()
     if Initialized then
