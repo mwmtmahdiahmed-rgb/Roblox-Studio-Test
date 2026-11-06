@@ -11,8 +11,11 @@ npm run verify              # = node verify.mjs
 node verify.mjs --only=math # one suite
 node verify.mjs --report    # write out/last-run.json
 node rojo-check.mjs         # project file integrity (paths, coverage, conventions)
+node changelog-check.mjs    # changelog parity: Documentation/Changelog.md vs Shared/Changelog.luau
 node bench.mjs              # comparative micro-benchmarks (same machine only)
 ```
+
+`changelog-check.mjs` exits non-zero unless both changelog copies agree (16 sections, 55 entries today; both must hold in every version).
 
 Exit code is non-zero unless **Compilation 28/28, Analysis 0 errors/0 warnings, Cases 437**.
 The 40 "definition gaps" are a classification of engine-boundary expressions the partial,
@@ -41,6 +44,7 @@ open with `--!strict`.
 | `baseline/api.json` | **Frozen** public API surface (138 exports / 6 modules + network layout). Never edited by hand; `--snapshot-baseline` only with an explicit, reviewed decision |
 | `bench.mjs` | Comparative benchmarks; numbers are machine-dependent and prove nothing about live runtime |
 | `rojo-check.mjs` | Offline check of `ProceduralAnimation.project.json` (not a `rojo build` substitute) |
+| `changelog-check.mjs` | Offline parity check between the two changelog copies (duplicate/missing headers, entry counts per version); exits non-zero on drift |
 | `out/` | Run artifacts (gitignored) |
 
 ## Limitations (read before trusting a green run)

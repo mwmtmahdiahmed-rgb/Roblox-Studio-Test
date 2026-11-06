@@ -18,10 +18,11 @@ npm ci                      # first time only (lockfile-pinned)
 node verify.mjs             # full gate: compile + analysis + 7 suites + API baseline
 node verify.mjs --only=math # one suite
 node rojo-check.mjs         # project-file integrity
+node changelog-check.mjs    # changelog parity: md copy vs runtime copy (versions + entry counts)
 node bench.mjs              # comparative micro-benchmarks (same machine only)
 ```
 
-Every push/PR to `main` or `arena/**` runs the same two commands on GitHub Actions
+Every push/PR to `main` or `arena/**` runs the same commands on GitHub Actions
 (`.github/workflows/verify.yml`) — the gate must be green before merge; it has no secrets.
 
 Expected: `Compilation 28 pass / 0 fail`, `Analysis 0 errors / 0 warnings / 40 gaps`,

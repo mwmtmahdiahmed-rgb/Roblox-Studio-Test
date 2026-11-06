@@ -170,32 +170,36 @@ an entry, add it in **both** places.
 - **Affected:** `Tools/verify/src/00-runner.luau, src/03-env.luau, src/02-mock-services.luau`
 - **Reason:** Three harness defects that made lifecycle tests unreliable. Suites silently ran against the previous suite's world, and connections leaked across suites. ResetModuleCache now runs each cached module's Destroy/Shutdown first, and RunScriptFile retains returned handles so teardown can release them.
 
+---
+
+## 1.0.5
+
 ### Type checker enabled: `roblox-definitions.luau` written, analysis now on by default.
 
 - **Affected:** `Tools/verify/roblox-definitions.luau (new), Tools/verify/verify.mjs`
 - **Reason:** Phase 3's last exit item. Without the definition file every Roblox global was reported as an unknown global; those were reclassified as "definition gaps" and filtered out of the failures, so analysis looked green while checking almost nothing. A missing or rejected definition file is now a hard failure. Diagnostics went 127 (1 error / 42 warnings / 84 gaps) → 0.
-
----
 
 ### Fixed an uninitialised `ApplyWorldDirection` upvalue and an undefined `UpperTorso` in the test mock.
 
 - **Affected:** `ClientRigKinematics, Tools/verify/src/02-mock-services.luau, Tools/verify/LuaTests/04-integration-suite.luau`
 - **Reason:** Found by the newly enabled checker. `local function ApplyWorldDirection` after `local ApplyWorldDirection` shadows the forward declaration instead of assigning it, so the FABRIK spine chain called `nil` every frame on any rig with a Chest joint. The mock bug — `Neck.Part0`/`Waist.Part1`/`Chest.Part1` wired from an undefined global — made the rig structurally invalid and hid that path from every existing test. A new `setup.withChest` case now covers it.
 
----
-
 ### Fixed a nil `MathLib` on the jump path and a bare `ReleaseRemotePose` call in shutdown.
 
 - **Affected:** `CharacterMotionState, ClientPosePipeline, AnimationNetwork`
 - **Reason:** Both found by the checker. `MathLib` was never passed to `CharacterMotionState`, so `UpdateJump` threw on every jump. `ReleaseRemotePose` lives on `Network`, so the shutdown loop called `nil`; it was masked only because the harness's server player list is empty at shutdown. Two vacuous jump tests were also fixed: they called `Humanoid.SetState` with a dot, leaving `NewState` nil so no `StateChanged` ever fired.
-
----
 
 ### Removed 36 dead locals from the Phase 3 split; annotated `QuaternionFromCFrame`'s return contract.
 
 - **Affected:** `ProceduralAnimator, ClientPosePipeline, CharacterMotionState, ClientRigKinematics, CharacterLifecycle, AnimationNetwork, ConfigData, MathCore`
 - **Reason:** Lint warnings from the enabled checker: re-bound pipeline thunks and constants nothing called, a self-assignment (`local Enum = Enum`), duplicate shadowing `Locomotion` pairs, unused service locals. The return annotation removes the last type error — the checker infers an unannotated parameter as `unknown` rather than `any`, poisoning the `Dot` product fed to `Acos(Clamp(...))`. Behaviour unchanged; packet layout and public API untouched.
 
+*Presence note (2026-11-06, changelog 1.1.7): the four entries under this heading were
+always present in this file, filed under the `## 1.0.4` heading with stray `---` dividers. In
+1.1.6 they were additionally re-duplicated in a separate `## 1.0.5` section; in 1.1.7 they are
+moved under the correct `## 1.0.5` heading (entry text unchanged) and the duplicate removed.
+`Shared/Changelog.luau` carries the same four entries tagged 1.0.5 plus one late entry tagged
+1.0.4 (harness `Suite.Reset`/teardown defect), which stays in the 1.0.4 section here.*
 
 ---
 
@@ -324,6 +328,33 @@ an entry, add it in **both** places.
 
 - **Affected:** `Documentation/Audit.md (appended addendum only), Documentation/Maintenance.md, Documentation/Memory.md, ROJO_OHIO_MUMBAI/ServerStorage/ZeroScript/Memory.luau`
 - **Reason:** After the 1.1.4 split the living docs still cited pre-split paths and the pre-split gate count. Audit.md's "Current gate" block and all historical changelog entries are append-only and were left byte-identical; the addendum records the post-split state (PASS 437 | FAIL 0). Maintenance.md now expects 437 and points at the harness's own rule note; Memory.md flags that the `UpperTorso` fix lives in `02b-mock-rig.luau`. No framework or harness code changed; the gate is unchanged; `Config.Version` stays `1.1.0`.
+
+---
+
+## 1.1.6
+
+### Dual-changelog parity restored: the markdown changelog was missing the 1.0.5 section present in the runtime copy; living docs re-synced to merged `main` (`5109f27`).
+
+- **Affected:** `Documentation/Changelog.md, Documentation/Memory.md, ROJO_OHIO_MUMBAI/ServerStorage/ZeroScript/Memory.luau`
+- **Reason:** A version-set audit showed Documentation/Changelog.md jumps 1.0.4 to 1.0.6 while Shared/Changelog.luau carried four 1.0.5 entries (analyzer enabled via a hand-written roblox-definitions file; ApplyWorldDirection shadowing + UpperTorso mock defect fixed; MathLib jump-path nil and ReleaseRemotePose call fixed; 36 dead locals removed); the 1.0.5 section has been restored from those entries, verbatim in substance and marked as a restoration. The luau copy additionally stores one late entry tagged 1.0.4 (harness Suite.Reset/teardown defect) after the 1.0.5 block; it was recorded as-is and not reordered (append-only). Memory.md and ZeroScript/Memory.luau headers and result lines now name main @ 5109f27 (PR #7) instead of the merged 4e24aa26/e0507aaf branch refs. No framework or harness code changed; gate unchanged (PASS 437 | FAIL 0); Config.Version stays 1.1.0.
+
+---
+
+## 1.1.7
+
+### Markdown changelog repaired: the four 1.0.5 entries are under the correct heading now; the 1.1.6 duplicate removed.
+
+- **Affected:** `Documentation/Changelog.md, ROJO_OHIO_MUMBAI/ServerStorage/ZeroScript/Memory.luau`
+- **Reason:** 1.1.6's audit compared version *headers* between the two changelog copies and concluded a 1.0.5 section was missing from the markdown file. The entries were in fact present, filed under the `## 1.0.4` heading with stray `---` dividers; the 1.1.6 restoration therefore duplicated them. 1.1.7 moves the original entries (entry text byte-identical) under a proper `## 1.0.5` heading, removes the condensed 1.1.6 copy, and records the correction. The runtime copy (`Shared/Changelog.luau`) is unchanged. No framework or harness code changed; the gate is unchanged (**PASS 437 | FAIL 0**); `Config.Version` stays `1.1.0`.
+
+---
+
+## 1.1.8
+
+### New `Tools/verify/changelog-check.mjs`: an offline parity gate between the two changelog copies; wired into CI.
+
+- **Affected:** `Tools/verify/changelog-check.mjs (new), .github/workflows/verify.yml, Tools/verify/package.json, Tools/verify/README.md, Documentation/Maintenance.md, Documentation/Memory.md, ROJO_OHIO_MUMBAI/ServerStorage/ZeroScript/Memory.luau`
+- **Reason:** The 1.1.7 repair showed the changelogs can drift without anyone noticing: the markdown copy misfiled the 1.0.5 entries under 1.0.4 and 1.1.6 then duplicated them. The new checker asserts no duplicate version headers, ascending order, at least one entry per md section, no '### ' entries outside version sections, non-empty Description/File/Reason in every runtime entry, identical version sets in both copies, and equal per-version entry counts (55/55 today, 16 sections). It is wired into the CI gate (verify.yml) and into Tools/verify/package.json scripts so a drift fails CI; negative cases verified (dropped entry, duplicated header, swapped sections, missing runtime entry all exit 1 with precise messages). No framework or harness runtime behaviour changed; gate unchanged (PASS 437 | FAIL 0); Config.Version stays 1.1.0.
 
 ---
 
