@@ -196,6 +196,11 @@ an entry, add it in **both** places.
 - **Affected:** `ProceduralAnimator, ClientPosePipeline, CharacterMotionState, ClientRigKinematics, CharacterLifecycle, AnimationNetwork, ConfigData, MathCore`
 - **Reason:** Lint warnings from the enabled checker: re-bound pipeline thunks and constants nothing called, a self-assignment (`local Enum = Enum`), duplicate shadowing `Locomotion` pairs, unused service locals. The return annotation removes the last type error — the checker infers an unannotated parameter as `unknown` rather than `any`, poisoning the `Dot` product fed to `Acos(Clamp(...))`. Behaviour unchanged; packet layout and public API untouched.
 
+### Measured the `--!strict` migration (Phase 6): PascalCase already clean, strict typing tooling-blocked.
+
+- **Affected:** `Documentation/Memory.md, Tools/verify` (measurement only — no product code changed)
+- **Reason:** Phase 6 has two halves. **Naming:** an AST-level scan of every declaration, parameter, loop variable and assignment target across all 26 product files reports **0 PascalCase violations** — nothing to migrate. **Strict typing:** `mode: "strict"` reports 750 errors, but they are two cascades rather than 750 problems — 38 `Unknown require: unsupported path` (this analyser build cannot resolve *any* `require`; `script.Parent.X`, `script.X`, `"./X"` and `FindFirstChild` all fail) make every `require(...)` return `unknown`, accounting for 388 unknown-operand and 141 operator errors. Editing product code to chase those would be guesswork. Recorded as **BLOCKED** pending a require-resolving toolchain, rather than reported as a failure or quietly worked around.
+
 ---
 
 ## Entry format

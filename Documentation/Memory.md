@@ -345,8 +345,31 @@ proof that animation runs on a real character — see the rig blocker above.
 ### Verification / tooling
 
 - **Analysis (type checker): DONE (2026-11-06).** `roblox-definitions.luau` written; project is
-  clean under `mode: "nonstrict"`. Phase 3's typing exit item is closed. `--!strict` migration
-  is a separate, still-unstarted item (Phase 6, 0/26).
+  clean under `mode: "nonstrict"`. Phase 3's typing exit item is closed.
+- **`--!strict` migration (Phase 6): one half DONE, one half TOOLING-BLOCKED.**
+
+  *PascalCase / naming — PASS.* An AST-level scan of every declaration, parameter, loop variable
+  and assignment target in all 26 product files reports **0 violations**. Nothing to migrate.
+
+  *Strict typing — BLOCKED, not started.* Measured honestly under `mode: "strict"`: **750
+  errors**. They are not 750 independent problems, they are two cascades:
+
+  | Count | Class | Cause |
+  |---|---|---|
+  | 38 | `Unknown require: unsupported path` | the analyser in this build cannot resolve *any* `require` |
+  | 388 | `unknown` operand | every `require(...)` therefore returns `unknown` |
+  | 141 | operator on `unknown` | consequence of the above |
+  | 140 | other | mostly the same cascade |
+  | 23 | shape mismatch | the genuine ones |
+  | 20 | needs annotation | the genuine ones |
+
+  I verified the require failure is not a configuration mistake: `script.Parent.X`,
+  `script.X`, `"./X"` and `require(script:FindFirstChild(...))` all report "unsupported path",
+  and the wasm bundle contains this error string and no resolver hook (`Analysis.create` exposes
+  no `modules`/resolver option). **Do not start the strict migration by editing product code to
+  chase these 750 errors** — a large share would disappear the moment `require` resolves, and the
+  rest cannot be told apart from the noise. Re-measure only against a toolchain that resolves
+  requires (Luau LSP, or `luau-analyze`).
 - **No `*.project.json`.** The repository has no Rojo project file, so the
   `ROJO_OHIO_MUMBAI/` → DataModel mapping is a convention enforced only by the harness
   (filename suffixes and directory names). Worth adding a real project file.
@@ -377,11 +400,12 @@ proof that animation runs on a real character — see the rig blocker above.
 ## 8. Session start checklist
 
 1. Read `Memory.md`, `GoodPractices.md`, `BadPractices.md`, `SyntaxReference.md`, `Changelog.md`.
-2. `cd Tools/verify && node verify.mjs --no-analysis` — establish the real baseline.
-   **Do not trust the numbers in this file; run it.**
-3. `wc -l` every script; confirm the 500-line rule still holds.
+2. `cd Tools/verify && node verify.mjs` — establish the real baseline, **with analysis on**.
+   **Do not trust the numbers in this file; run it.** (`--no-analysis` exists to skip the type
+   checker, but running it that way hides the defects the checker is there to catch.)
+3. `wc -l` every script; confirm the 500-line rule still holds (product max is currently 473).
 4. Read the source of any module you intend to touch.
-5. Verify the API surface is still 136 exports.
+5. Verify the API surface is still 138 exports.
 
 ## 9. Session end checklist
 

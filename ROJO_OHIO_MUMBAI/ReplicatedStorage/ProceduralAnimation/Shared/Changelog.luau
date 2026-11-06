@@ -218,6 +218,12 @@ Changelog.Entries = {
         Reason = "Lint warnings from the enabled checker: re-bound pipeline thunks and constants that nothing called, a self-assignment (local Enum = Enum), duplicate shadowing Locomotion pairs, and unused service/require locals. Annotating QuaternionFromCFrame as returning four numbers also removes the last type error: the checker inferred the unannotated parameter as unknown rather than any, which poisoned the Dot product fed to Acos(Clamp(...)). Behaviour is unchanged; packet layout and public API are untouched.",
     },
     {
+        Version = "1.0.5",
+        Description = "Measured the --!strict migration (Phase 6): PascalCase is already clean, strict typing is tooling-blocked.",
+        File = "Documentation/Memory, Tools/verify",
+        Reason = "Phase 6 has two halves. Naming: an AST-level scan of every declaration, parameter, loop variable and assignment target in all 26 product files reports 0 PascalCase violations, so nothing to migrate. Strict typing: mode 'strict' reports 750 errors, but they are two cascades, not 750 problems -- 38 'Unknown require: unsupported path' (this analyser build cannot resolve any require: script.Parent.X, script.X, './X' and FindFirstChild all fail) make every require return unknown, which accounts for 388 unknown-operand and 141 operator errors. Editing product code to chase those would be guesswork. Recorded as BLOCKED pending a require-resolving toolchain rather than reported as a failure or quietly worked around.",
+    },
+    {
         Version = "1.0.4",
         Description = "Verification harness: Suite.Reset was declared but never invoked; ResetModuleCache dropped modules without running their teardown; script lifecycle handles were discarded.",
         File = "Tools/verify/src/00-runner.luau, src/03-env.luau, src/02-mock-services.luau",
