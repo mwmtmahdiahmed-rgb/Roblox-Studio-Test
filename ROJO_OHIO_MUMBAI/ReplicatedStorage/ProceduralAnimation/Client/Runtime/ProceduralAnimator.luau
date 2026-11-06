@@ -1,3 +1,4 @@
+--!strict
 -- ProceduralAnimation/Client/ProceduralAnimator
 -- All motion is written to Motor6D.Transform. The Humanoid stays alive and in charge of physics.
 
@@ -12,8 +13,7 @@ local Changelog = require(script.Parent.Parent.Parent.Shared.Changelog)
 local Connections = require(script.Parent.Parent.Parent.Shared.Utilities.Connections)
 local PlayerTrackerModule = require(script.Parent.PlayerTracker)
 
-
-local Animator = {}
+local Animator: { [string]: any } = {}
 
 --=========================================================
 -- [1] CONSTANTS
@@ -43,22 +43,22 @@ local ActiveStates = StatePool.Active
 -- Read through the pool: StatePool.Count changes as characters are added and removed, so a
 -- captured copy would go stale (that is exactly what broke SetPreviewMode and SetLocomotionWeight
 -- before the split).
-local function GetActiveCount()
+local function GetActiveCount(): number
     return StatePool.Count
 end
 
 local Running = false
 local Initialized = false
 local Destroyed = false
-local HeartbeatConnection = nil
+local HeartbeatConnection: RBXScriptConnection | nil = nil
 local PreviewMode = Config.PreviewAnchorRoot
 
-local EventCallbacks = {}
+local EventCallbacks: { [number]: { [number]: (any) -> () } } = {}
 for EventId = 1, MaxEventId do
     EventCallbacks[EventId] = {}
 end
 
-local function DispatchEvent(EventId, Value)
+local function DispatchEvent(EventId: number, Value: any)
     local List = EventCallbacks[EventId]
     if not List then
         return
@@ -75,7 +75,7 @@ end
 -- [3] EASING
 --=========================================================
 
-local function SampleEase(EasingId, Alpha)
+local function SampleEase(EasingId: number, Alpha: number): number | nil
     return MathLib.Ease(EasingId, Alpha)
 end
 
@@ -110,10 +110,10 @@ local CharacterLifecycle = require(script.Parent.CharacterLifecycle)({
     Workspace = Workspace,
     Players = Players,
     Network = Network,
-    FireBusEvent = function(EventId)
+    FireBusEvent = function(EventId: number)
         DispatchEvent(EventId, 1)
     end,
-    IsPreviewMode = function()
+    IsPreviewMode = function(): boolean
         return PreviewMode
     end,
     CharacterJoints = CharacterJoints,
@@ -139,7 +139,7 @@ local Pipeline = ClientPosePipeline({
     UpdateWaves = ClientRigKinematics.UpdateWaves,
     SampleEase = SampleEase,
     Network = Network,
-    IsPreviewMode = function()
+    IsPreviewMode = function(): boolean
         return PreviewMode
     end,
 })
@@ -157,7 +157,7 @@ local UpdateRemoteCharacter = Pipeline.UpdateRemoteCharacter
 -- Kept in this module (rather than the pipeline) because it walks CharacterStates/ActiveStates,
 -- the state pool this module owns. It only calls into the pipeline to produce each pose.
 
-local function OnHeartbeat(DeltaTime)
+local function OnHeartbeat(DeltaTime: number)
     if not Running then
         return
     end
@@ -214,23 +214,22 @@ end
 local SetupCharacter = CharacterLifecycle.SetupCharacter
 local TeardownCharacter = CharacterLifecycle.TeardownCharacter
 
-
-function Animator.SetupCharacter(Character)
+function Animator.SetupCharacter(Character: Model)
     return SetupCharacter(Character)
 end
 
-function Animator.TeardownCharacter(Character)
+function Animator.TeardownCharacter(Character: Model)
     return TeardownCharacter(Character)
 end
 
-function Animator.SetLocomotionWeight(Weight)
+function Animator.SetLocomotionWeight(Weight: number)
     local Clamped = MathLib.Clamp01(Weight)
     for Index = 1, GetActiveCount() do
         ActiveStates[Index].LocomotionWeight = Clamped
     end
 end
 
-function Animator.SetIkTarget(Limb, WorldPosition, Weight)
+function Animator.SetIkTarget(Limb: string, WorldPosition: Vector3, Weight: number)
     local Side = nil
     if Limb == "LeftHand" then
         Side = 1
@@ -250,7 +249,7 @@ function Animator.SetIkTarget(Limb, WorldPosition, Weight)
     end
 end
 
-function Animator.PlayGesture(GestureId, Duration, EasingId)
+function Animator.PlayGesture(GestureId: number, Duration: number | nil, EasingId: number | nil)
     local Clip = GestureClips[GestureId]
     if not Clip then
         Changelog.Log("PlayGesture: unknown gesture " .. tostring(GestureId))
@@ -281,7 +280,7 @@ function Animator.PlayGesture(GestureId, Duration, EasingId)
     end
 end
 
-function Animator.StopGesture(GestureId)
+function Animator.StopGesture(GestureId: number)
     local Clip = GestureClips[GestureId]
     for Index = 1, GetActiveCount() do
         local State = ActiveStates[Index]
@@ -298,7 +297,7 @@ function Animator.StopGesture(GestureId)
     end
 end
 
-function Animator.SetEasingOverride(JointIndexValue, EasingId)
+function Animator.SetEasingOverride(JointIndexValue: number, EasingId: number)
     if JointIndexValue < 1 or JointIndexValue > MaxJoints then
         return
     end
@@ -310,7 +309,7 @@ function Animator.SetEasingOverride(JointIndexValue, EasingId)
     end
 end
 
-function Animator.SetPreviewMode(Enabled)
+function Animator.SetPreviewMode(Enabled: boolean)
     PreviewMode = Enabled and true or false
     for Index = 1, GetActiveCount() do
         local State = ActiveStates[Index]
@@ -347,7 +346,7 @@ function Animator.Stop()
     end
 end
 
-function Animator.BindToEvent(EventName, Callback)
+function Animator.BindToEvent(EventName: string, Callback: (any) -> ())
     local EventId = Config.EventId[EventName]
     if not EventId then
         Changelog.Log("BindToEvent: unknown event " .. tostring(EventName))
@@ -387,7 +386,7 @@ function Animator.Init()
     Animator.Start()
 end
 
-function Animator.IsRunning()
+function Animator.IsRunning(): boolean
     return Running
 end
 

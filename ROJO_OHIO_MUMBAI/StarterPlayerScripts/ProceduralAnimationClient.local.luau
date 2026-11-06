@@ -1,3 +1,4 @@
+--!strict
 -- ProceduralAnimationClient
 -- Bootstrap only: character lifetime wiring. No developer call is required.
 --
@@ -32,20 +33,20 @@ local Animator = require(Runtime.ProceduralAnimator)
 
 Animator.Init()
 
-local Bootstrap = {}
+local Bootstrap: { [string]: any } = {}
 
-local LocalConnections = {}
+local LocalConnections: { [number]: RBXScriptConnection } = {}
 
-local function Track(Connection)
+local function Track(Connection: RBXScriptConnection): RBXScriptConnection
     LocalConnections[#LocalConnections + 1] = Connection
     return Connection
 end
 
-local function OnCharacterAdded(Character)
+local function OnCharacterAdded(Character: Model)
     Animator.SetupCharacter(Character)
 end
 
-local function OnCharacterRemoving(Character)
+local function OnCharacterRemoving(Character: Model)
     Animator.TeardownCharacter(Character)
 end
 
