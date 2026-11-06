@@ -356,6 +356,12 @@ Changelog.Entries = {
         File = "Tools/verify/changelog-check.mjs (new), .github/workflows/verify.yml, Tools/verify/package.json, Tools/verify/README.md, Documentation/Maintenance.md, Documentation/Memory.md, ROJO_OHIO_MUMBAI/ServerStorage/ZeroScript/Memory.luau",
         Reason = "The 1.1.7 repair showed the changelogs can drift without anyone noticing: the markdown copy misfiled the 1.0.5 entries under 1.0.4 and 1.1.6 then duplicated them. The new checker asserts no duplicate version headers, ascending order, at least one entry per md section, no '### ' entries outside version sections, non-empty Description/File/Reason in every runtime entry, identical version sets in both copies, and equal per-version entry counts (55/55 today, 16 sections). It is wired into the CI gate (verify.yml) and into Tools/verify/package.json scripts so a drift fails CI; negative cases verified (dropped entry, duplicated header, swapped sections, missing runtime entry all exit 1 with precise messages). No framework or harness runtime behaviour changed; gate unchanged (PASS 437 | FAIL 0); Config.Version stays 1.1.0.",
     },
+    {
+        Version = "1.1.9",
+        Description = "Docs re-synced to merged main (3ca2731, PR #8): Memory.md and ZeroScript/Memory.luau point at current main; stale 'main @ 5109f27' references updated; 1.1.8 bullet count corrected to 56/56.",
+        File = "Documentation/Memory.md, ROJO_OHIO_MUMBAI/ServerStorage/ZeroScript/Memory.luau, Documentation/Changelog.md, ROJO_OHIO_MUMBAI/ReplicatedStorage/ProceduralAnimation/Shared/Changelog.luau",
+        Reason = "Post-merge re-sync, same convention as after PR #7: the memory docs must name the merge commit (3ca2731, PR #8, CI run 42178478823) and the branch they were re-verified on, otherwise a cold-start engineer is told to look at a stale main tip. No code, harness, or framework behaviour changed; gate unchanged (PASS 437 | FAIL 0); Config.Version stays 1.1.0.",
+    },
 }
 
 --=========================================================
